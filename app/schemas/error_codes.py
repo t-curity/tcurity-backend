@@ -1,0 +1,24 @@
+# app/schemas/error_codes.py
+
+from enum import Enum
+
+class ErrorCode(str, Enum):
+    # --- Session 관련 ---
+    SESSION_NOT_FOUND = "SESSION_NOT_FOUND"
+    SESSION_EXPIRED = "SESSION_EXPIRED"
+    INVALID_STATE = "INVALID_STATE"
+
+    # --- 요청 / 입력 ---
+    INVALID_REQUEST = "INVALID_REQUEST"
+    INVALID_BEHAVIOR_DATA = "INVALID_BEHAVIOR_DATA"
+
+    # --- Phase A ---
+    LOW_CONFIDENCE_BEHAVIOR = "LOW_CONFIDENCE_BEHAVIOR"
+
+    # --- Phase B ---
+    WRONG_ANSWER = "WRONG_ANSWER"
+    ANOMALOUS_BEHAVIOR = "ANOMALOUS_BEHAVIOR"
+    TIME_LIMIT_EXCEEDED = "TIME_LIMIT_EXCEEDED"
+
+    # --- 서버 오류 ---
+    INTERNAL_ERROR = "INTERNAL_ERROR"
