@@ -4,3 +4,7 @@ pydantic==2.6.0
 redis==5.0.1
 httpx==0.25.2
 python-dotenv==1.0.0
+
+opencv-python
+numpy
+matplotlib
