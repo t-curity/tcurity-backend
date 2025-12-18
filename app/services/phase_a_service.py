@@ -39,11 +39,28 @@ def generate_phase_a_both() -> Tuple[Dict[str, Any], Dict[str, Any]]:
     # ---------------------------
     # FE(클라이언트) 전달용 데이터
     # ---------------------------
+    # cut_rectangle을 guide_line 백분율로 변환
+    cut_rect = problem["cut_rectangle"]  # [x, y, width, height]
+    img_w = problem["image_width"]
+    img_h = problem["image_height"]
+    
+    # 절취선 중앙 x 좌표 (백분율)
+    center_x = (cut_rect[0] + cut_rect[2] / 2) / img_w
+    # y 시작/끝 (백분율)
+    y_start = cut_rect[1] / img_h
+    y_end = (cut_rect[1] + cut_rect[3]) / img_h
+    # 너비 (백분율)
+    line_width = cut_rect[2] / img_w
+    
     fe_payload = {
-        "phase": "1/2",
-        "image": problem["image_base64"],
-        "cut_rectangle": problem["cut_rectangle"],
+        "guide_line": {
+            "start": [round(center_x, 4), round(y_start, 4)],
+            "end": [round(center_x, 4), round(y_end, 4)],
+            "width": round(line_width, 4),
+        },
         "guide_text": GUIDE_TEXT,
+        "image": problem["image_base64"],
+        "phase": "1/2",
         "time_limit": TIME_LIMIT,
     }
 
@@ -55,3 +72,38 @@ def generate_phase_a_both() -> Tuple[Dict[str, Any], Dict[str, Any]]:
     }
 
     return fe_payload, internal_payload
+
+
+# # ===========================
+# # Phase A 검증 (AI 연동)
+# # ===========================
+# from app.services.ai_phase_a_client import verify_phase_a_with_ai
+
+
+# def verify_phase_a_by_ai(
+#     user_points: List[Dict[str, Any]],
+# ) -> Dict[str, Any]:
+#     """
+#     Phase A 사용자 입력을 AI 서버에 위임하여 검증한다.
+
+#     반환 예:
+#     {
+#         "success": True
+#     }
+#     or
+#     {
+#         "success": False,
+#         "reason": "BOT_DETECTED"
+#     }
+#     """
+#     ai_result = verify_phase_a_with_ai(user_points)
+
+#     if not ai_result.get("pass"):
+#         return {
+#             "success": False,
+#             "reason": "BOT_DETECTED"
+#         }
+
+#     return {
+#         "success": True
+#     }

@@ -21,7 +21,7 @@ def session_init_endpoint(
     """
 
     # 1) client_id 검증 (별도 서비스로 분리하는 것이 더 정석적)
-#    validate_client_id(x_client_id)
+    # validate_client_id(x_client_id)
 
     # 2) 세션 생성 서비스 호출
     session_data = initialize_session(client_id=x_client_id)

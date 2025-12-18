@@ -62,10 +62,15 @@ def generate_phase_a_problem():
     y_min, y_max = metadata["ticket_y_range"]
     cut_rectangle = [base_x - 10, y_min, 20, y_max - y_min]
     
+    # 이미지 크기 (백분율 변환용)
+    img_h, img_w = canvas.shape[:2]
+    
     return {
         "image_base64": image_base64,
         "target_path": target_path,
-        "cut_rectangle": cut_rectangle
+        "cut_rectangle": cut_rectangle,
+        "image_width": img_w,
+        "image_height": img_h
     }
 
 # ==========================================================
