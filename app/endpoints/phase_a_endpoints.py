@@ -42,7 +42,7 @@ def captcha_request_problem(
             level=LogLevel.WARNING
         )
         return BaseResponse(
-            #status=current_status.value,
+            status=current_status.value,
             success=False,
             error=ErrorInfo(
                 code=ErrorCode.INVALID_STATE,
@@ -71,7 +71,7 @@ def captcha_request_problem(
 
     # 정상 응답 반환
     return BaseResponse(
-        #status=SessionStatus.PHASE_A.value,
+        status=SessionStatus.PHASE_A.value,
         success=True,
         data={"problem": fe_payload}
     )
