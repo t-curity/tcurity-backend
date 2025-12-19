@@ -2,7 +2,8 @@
 
 from fastapi import APIRouter, Header, HTTPException, status
 
-from app.schemas.session import BaseResponse
+from app.schemas.common import BaseResponse
+from app.core.state_machine import SessionStatus
 from app.services.session_service import initialize_session
 from app.services.client_validation import validate_client_id  # optional: validator 분리
 
@@ -28,6 +29,7 @@ def session_init_endpoint(
     
     # 3) 통일된 응답 구조로 반환 (data 안에 모든 정보)
     return BaseResponse(
+        status=SessionStatus.PHASE_A.value,
         success=True,
         data={
             "session_id": session_data["session_id"],
