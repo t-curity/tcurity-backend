@@ -116,9 +116,19 @@ def generate_cutline(
     # ------------------------
     # 이미지 로드
     # ------------------------
-    img = cv2.imread(img_path)
+    img = cv2.imread(img_path, cv2.IMREAD_UNCHANGED)  # BGRA 가능
+
     if img is None:
         raise FileNotFoundError(f"입력 이미지 없음: {img_path}")
+
+    # 혹시 3채널로 들어오면 알파를 붙여줌(안전장치)
+    if len(img.shape) == 3 and img.shape[2] == 3:
+        alpha = np.full((img.shape[0], img.shape[1], 1), 255, dtype=img.dtype)
+        img = np.concatenate([img, alpha], axis=2)  # BGR + A
+
+    canvas = img.copy()
+
+    color = (255, 255, 255, 255)  # 흰색 + 불투명
 
     h, w = img.shape[:2]
 
@@ -159,7 +169,7 @@ def generate_cutline(
     # ------------------------
     canvas = img.copy()
     segment_length = int(dash_length * segment_ratio)
-    color = (255, 255, 255)
+    color = (255, 255, 255, 255) # 흰색 + 불투명
 
     for i in range(0, len(curve_points), dash_length):
 
