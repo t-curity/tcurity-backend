@@ -28,18 +28,19 @@ def captcha_submit(
     # PHASE A 처리
     # -------------------------
     if status == SessionStatus.PHASE_A:
+        bpd = request.behavior_pattern_data
+        if bpd is None and request.points is not None and request.metadata is not None:
+            bpd = {"points": request.points, "metadata": request.metadata}
 
-        if request.behavior_pattern_data is None:
+        if bpd is None:
             return BaseResponse(
                 status=status.value,
                 success=False,
-                error=ErrorInfo(
-                    code=ErrorCode.INVALID_PAYLOAD,
-                    message="behavior_pattern_data는 PHASE_A에서 필수입니다."
-                )
+                error=ErrorInfo(code=ErrorCode.INVALID_PAYLOAD,
+                                message="behavior_pattern_data는 PHASE_A에서 필수입니다.")
             )
 
-        return verify_phase_a(session_id, request.behavior_pattern_data)
+        return verify_phase_a(session_id, bpd)
 
     # -------------------------
     # PHASE B 처리
@@ -82,4 +83,19 @@ def captcha_submit(
             code=ErrorCode.INVALID_STATE,
             message=f"현재 상태({status.value})에서는 제출할 수 없습니다."
         )
+    )
+
+from pydantic import BaseModel
+
+class CaptchaVerifyRequest(BaseModel):
+    session_id: str
+
+@router.post("/verify", response_model=BaseResponse)
+def captcha_verify(req: CaptchaVerifyRequest):
+    session = get_session_and_validate(req.session_id)
+    status = SessionStatus(session["status"])
+    return BaseResponse(
+        status=status.value,
+        success=(status == SessionStatus.COMPLETED),
+        data={"session_id": req.session_id}
     )

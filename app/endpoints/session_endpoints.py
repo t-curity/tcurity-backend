@@ -29,7 +29,7 @@ def session_init_endpoint(
     
     # 3) 통일된 응답 구조로 반환 (data 안에 모든 정보)
     return BaseResponse(
-        status=SessionStatus.PHASE_A.value,
+        status=SessionStatus.INIT.value,
         success=True,
         data={
             "session_id": session_data["session_id"],
