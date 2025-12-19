@@ -74,36 +74,36 @@ def generate_phase_a_both() -> Tuple[Dict[str, Any], Dict[str, Any]]:
     return fe_payload, internal_payload
 
 
-# # ===========================
-# # Phase A 검증 (AI 연동)
-# # ===========================
-# from app.services.ai_phase_a_client import verify_phase_a_with_ai
+# ===========================
+# Phase A 검증 (AI 연동)
+# ===========================
+from app.services.ai_phase_a_client import verify_phase_a_with_ai_sync
 
 
-# def verify_phase_a_by_ai(
-#     user_points: List[Dict[str, Any]],
-# ) -> Dict[str, Any]:
-#     """
-#     Phase A 사용자 입력을 AI 서버에 위임하여 검증한다.
+def verify_phase_a_by_ai(
+    user_points: List[Dict[str, Any]],
+) -> Dict[str, Any]:
+    """
+    Phase A 사용자 입력을 AI 서버에 위임하여 검증한다.
 
-#     반환 예:
-#     {
-#         "success": True
-#     }
-#     or
-#     {
-#         "success": False,
-#         "reason": "BOT_DETECTED"
-#     }
-#     """
-#     ai_result = verify_phase_a_with_ai(user_points)
+    반환 예:
+    {
+        "success": True
+    }
+    or
+    {
+        "success": False,
+        "reason": "BOT_DETECTED"
+    }
+    """
+    ai_result = verify_phase_a_with_ai_sync(user_points)
 
-#     if not ai_result.get("pass"):
-#         return {
-#             "success": False,
-#             "reason": "BOT_DETECTED"
-#         }
+    if not ai_result.get("pass"):
+        return {
+            "success": False,
+            "reason": "BOT_DETECTED"
+        }
 
-#     return {
-#         "success": True
-#     }
+    return {
+        "success": True
+    }

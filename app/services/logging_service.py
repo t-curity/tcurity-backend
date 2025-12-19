@@ -1,9 +1,3 @@
-# app/services/logging_service.py
-# 추후
-# captcha 성공/실패 로그, 이상 행동 로그, 분석용 이벤트 로그
-
-# def log_event(event_type: str, payload: dict):
-# pass
 import logging
 import json
 from datetime import datetime
