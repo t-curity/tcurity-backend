@@ -13,24 +13,16 @@ from typing import Dict, Any, List
 
 # AI 서버 URL (환경변수에서 가져오거나 기본값 사용)
 AI_SERVER_URL = os.getenv("AI_SERVER_URL", "http://10.0.83.48:9000")
-# AI_SERVER_URL = "http://10.0.3.151:9000"
 
 
-# 기준 해상도 (이미지 고정 크기 - fallback용)
-W_REF = 1920
-H_REF = 1080
-
-
-def filter_and_restore_points(
+def filter_and_normalize_points(
     points: List[Any],
-    screen_width: int,
-    screen_height: int
 ) -> List[Dict[str, Any]]:
     """
-    포인트 필터링 및 픽셀 복원
+    포인트 필터링 (정규화 좌표 0~1 그대로 유지)
     - FE 배열 형식 지원: [x, y, t, eventType]
     - FE 객체 형식 지원: {"x": x, "y": y, "t": t, "eventType": eventType}
-    - FE 좌표(0~1) × 화면 크기 = 픽셀 좌표
+    - 좌표는 0~1 정규화 상태 그대로 전송
     """
     if not isinstance(points, list) or not points:
         return []
@@ -56,7 +48,7 @@ def filter_and_restore_points(
                 x_norm = float(p["x"])
                 y_norm = float(p["y"])
                 t = float(p["t"])
-                event_type = p.get("eventType", "move")
+                event_type = p.get("eventType", p.get("event_type", "move"))
             else:
                 continue
             
@@ -64,10 +56,10 @@ def filter_and_restore_points(
             if not (0 <= x_norm <= 1 and 0 <= y_norm <= 1):
                 continue
             
-            # 픽셀 좌표로 복원 (FE 좌표 × 화면 크기)
+            # 정규화 좌표 그대로 전송 (픽셀 변환 없음)
             filtered.append({
-                "x": x_norm * screen_width,
-                "y": y_norm * screen_height,
+                "x": x_norm,
+                "y": y_norm,
                 "t": t,
                 "eventType": event_type
             })
@@ -78,14 +70,15 @@ def filter_and_restore_points(
 
 
 def verify_phase_a_with_ai_sync(
-    user_points: List[Dict[str, Any]],
+    user_points: List[Any],
     metadata: Dict[str, Any] = None
 ) -> Dict[str, Any]:
     """
     AI 서버에 Phase A 드래그 데이터를 전송하여 사람/봇 판별
     
     Args:
-        user_points: [{"x": float, "y": float, "t": float, "eventType": str}, ...]
+        user_points: [[x, y, t, eventType], ...] 또는 [{"x": x, "y": y, "t": t}, ...]
+                     x, y는 0~1 정규화 좌표
         metadata: {"screenWidth": int, "screenHeight": int, "deviceType": str}
         
     Returns:
@@ -97,15 +90,8 @@ def verify_phase_a_with_ai_sync(
     if metadata is None:
         metadata = {}
     
-    screen_width = metadata.get("screenWidth", W_REF)
-    screen_height = metadata.get("screenHeight", H_REF)
-    
-    # 포인트 필터링 및 픽셀 복원 (FE 좌표 × 화면 크기)
-    filtered_points = filter_and_restore_points(
-        user_points,
-        screen_width,
-        screen_height
-    )
+    # 포인트 필터링 (정규화 좌표 그대로)
+    filtered_points = filter_and_normalize_points(user_points)
     
     # 유효 포인트가 너무 적으면 즉시 봇 처리
     if len(filtered_points) < 3:
@@ -115,11 +101,13 @@ def verify_phase_a_with_ai_sync(
             "reason": "insufficient_valid_points"
         }
     
-    # GPU 서버로 픽셀 좌표 전송 (GPU는 추론만)
+    # GPU 서버로 정규화 좌표 전송
     payload = {
-        "points": filtered_points,  # 픽셀 좌표
+        "points": filtered_points,  # 정규화 좌표 (0~1)
         "metadata": {
-            "deviceType": metadata.get("deviceType", "unknown")
+            "deviceType": metadata.get("deviceType", "unknown"),
+            "screenWidth": metadata.get("screenWidth"),
+            "screenHeight": metadata.get("screenHeight"),
         }
     }
     
