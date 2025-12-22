@@ -16,6 +16,7 @@ from app.core.session_store import (
 from app.services.phase_a_service import generate_phase_a_both
 from app.services.phase_b_service import generate_phase_b_both
 from app.services.ai_phase_a_client import verify_phase_a_with_ai
+from app.services.ai_phase_b_client import verify_phase_b_with_ai
 
 
 PHASE_B_TIME_LIMIT = 30  # seconds
@@ -192,7 +193,23 @@ def verify_phase_b(
             ErrorCode.TIME_LIMIT_EXCEEDED,
         )
 
-    is_correct = user_answer == correct
+    # ---------------- AI 서버 호출 (Phase B) ----------------
+    try:
+        # AI 서버에 정답 + 행동 데이터 전송
+        ai_result = verify_phase_b_with_ai(
+            user_answer=user_answer,
+            correct_answer=correct,
+            behavior_data=behavior
+        )
+        is_correct = ai_result.get("pass", False)
+        # AI가 실패하면 기본 정답 체크로 fallback
+        if not is_correct:
+            is_correct = user_answer == correct
+    except Exception:
+        # AI 서버 오류 시 기본 정답 체크로 fallback
+        is_correct = user_answer == correct
+
+    # 행동 검증 (현재는 더미, AI 고도화 시 활용)
     is_human = check_phase_b_behavior(behavior)
 
     if is_correct and is_human:
@@ -214,3 +231,4 @@ def verify_phase_b(
         fail_count,
         error,
     )
+

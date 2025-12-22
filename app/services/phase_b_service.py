@@ -3,83 +3,138 @@
 import random
 from time import time
 from typing import Dict, Any, List, Tuple
+from PIL import Image
 
-from app.utils.grid_tools import load_random_grid_images
+from app.services.ai_phase_b_client import generate_phase_b_problem_from_ai
 from app.utils.image_tools import to_base64, apply_watermark_and_noise
 
 PHASE_B_TIME_LIMIT = 30
-PHASE_B_SIZE = 9
-PHASE_B_ANSWER_COUNT = 4
 
 
-def generate_phase_b_payload(fail_count: int, correct_answer: List[str], images: List[Any], labels: List[str]) -> Dict[str, Any]:
+def generate_phase_b_payload(
+    fail_count: int,
+    problem_data: Dict[str, Any]
+) -> Dict[str, Any]:
     """
-    FE에게 내려보낼 Phase B 문제 payload만 구성.
-    - absolute answer 절대 포함 X
+    AI 서버에서 받은 문제 데이터를 FE용 payload로 변환
+    
+    Args:
+        fail_count: 실패 횟수
+        problem_data: AI 서버 응답
+            {
+                "question": "Animals 이미지를 모두 고르시오",
+                "target_class": "Animals",
+                "images": [
+                    {
+                        "path": "/path/to/image.jpg",
+                        "label": "Animals",
+                        "is_target": True
+                    },
+                    ...
+                ]
+            }
+    
+    Returns:
+        FE용 payload (absolute answer 제외)
     """
-
     processed_grid = []
-    for idx, (img, label) in enumerate(zip(images, labels)):
-        order = correct_answer.index(label) + 1 if label in correct_answer else 0
+    
+    # 정답 순서 매핑 (워터마크용)
+    target_images = [img for img in problem_data["images"] if img["is_target"]]
+    
+    for idx, img_info in enumerate(problem_data["images"]):
+        # 이미지 파일 로드
+        img_path = img_info["path"]
+        try:
+            img = Image.open(img_path)
+        except Exception as e:
+            raise RuntimeError(f"이미지 로드 실패: {img_path}, Error: {e}")
+        
+        # 워터마크 순서 결정 (정답이면 1~4, 오답이면 0)
+        if img_info["is_target"]:
+            order = next(
+                i + 1 for i, t in enumerate(target_images) 
+                if t["path"] == img_path
+            )
+        else:
+            order = 0
+        
+        # 워터마크 및 노이즈 적용
         marked = apply_watermark_and_noise(img, order, fail_count)
-
+        
         processed_grid.append({
             "slot_index": idx,
-            "label": label,
+            "label": img_info["label"],
             "image_base64": to_base64(marked)
         })
-
+    
     return {
         "type": "PHASE_B",
         "grid": processed_grid,
-        "time_limit": PHASE_B_TIME_LIMIT
+        "time_limit": PHASE_B_TIME_LIMIT,
+        "question": problem_data["question"]
     }
 
 
-def generate_phase_b_internal(correct_answer: List[str]) -> Dict[str, Any]:
+def generate_phase_b_internal(problem_data: Dict[str, Any]) -> Dict[str, Any]:
     """
-    서버 세션에 저장해야 하는 내부 정보만 포함.
-    - 정답 배열
-    - 문제 생성 시각
-    - fail_count는 verify_service에서 증가시킴
+    서버 세션에 저장할 내부 정보 생성
+    
+    Args:
+        problem_data: AI 서버 응답
+    
+    Returns:
+        {
+            "correct_answer": ["0", "3", "5", "7"],  # 정답 이미지의 인덱스
+            "issued_at": 1234567890
+        }
     """
-
+    # 정답 이미지의 인덱스를 문자열 리스트로 변환
+    correct_indices = [
+        str(idx) 
+        for idx, img in enumerate(problem_data["images"]) 
+        if img["is_target"]
+    ]
+    
     return {
-        "correct_answer": correct_answer,
+        "correct_answer": correct_indices,
         "issued_at": int(time() * 1000)
     }
 
 
 def generate_phase_b_both(fail_count: int) -> Tuple[Dict[str, Any], Dict[str, Any]]:
     """
-    Phase B 문제를 생성하고,
+    Phase B 문제를 AI 서버에서 생성하고,
     - FE payload
     - Internal payload
-    두 값을 한 번에 반환한다.
+    두 값을 한 번에 반환
+    
+    Args:
+        fail_count: 현재 실패 횟수
+    
+    Returns:
+        (fe_payload, internal_payload)
     """
-
-    grid_data = load_random_grid_images(PHASE_B_SIZE)
-    images = grid_data["images"]
-    labels = grid_data["labels"]
-
-    if len(images) != PHASE_B_SIZE:
-        raise ValueError("[ERROR] Phase B grid image count mismatch")
-
-    # 1) 정답 4개 선택
-    correct_answer = random.sample(labels, PHASE_B_ANSWER_COUNT)
-
-    #디버깅 로그
-    print("[PHASE B] CORRECT ANSWER =", correct_answer)
+    # 1) AI 서버에서 문제 생성
+    problem_data = generate_phase_b_problem_from_ai()
+    
+    # 디버깅 로그
+    correct_indices = [
+        str(idx) 
+        for idx, img in enumerate(problem_data["images"]) 
+        if img["is_target"]
+    ]
+    print(f"[PHASE B] CORRECT ANSWER = {correct_indices}")
+    print(f"[PHASE B] TARGET CLASS = {problem_data['target_class']}")
     
     # 2) FE payload 생성
     fe_payload = generate_phase_b_payload(
         fail_count=fail_count,
-        correct_answer=correct_answer,
-        images=images,
-        labels=labels,
+        problem_data=problem_data
     )
-
+    
     # 3) Internal payload 생성
-    internal_payload = generate_phase_b_internal(correct_answer)
-
+    internal_payload = generate_phase_b_internal(problem_data)
+    
     return fe_payload, internal_payload
+
