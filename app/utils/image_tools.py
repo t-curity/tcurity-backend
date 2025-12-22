@@ -24,56 +24,65 @@ def apply_watermark_and_noise(img, number, fail_count):
     - number: 이미지에 표시할 숫자 (1~9)
     - fail_count: 실패 횟수 (현재 미사용, 추후 노이즈 추가 시 사용)
     """
-    # PIL Image를 numpy array로 변환
-    if hasattr(img, 'mode'):  # PIL Image
-        img_np = np.array(img)
-        if len(img_np.shape) == 3 and img_np.shape[2] == 3:  # RGB
-            img_np = cv2.cvtColor(img_np, cv2.COLOR_RGB2BGR)
-        elif len(img_np.shape) == 3 and img_np.shape[2] == 4:  # RGBA
-            img_np = cv2.cvtColor(img_np, cv2.COLOR_RGBA2BGR)
-    else:
-        img_np = img
+    from PIL import ImageDraw, ImageFont
     
-    if img_np is None:
-        return img
+    # PIL Image로 변환 (없으면 그대로)
+    if not hasattr(img, 'mode'):
+        # numpy array → PIL Image
+        if len(img.shape) == 3:
+            img = Image.fromarray(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+        else:
+            img = Image.fromarray(img)
     
-    result = img_np.copy()
+    # RGB로 변환 (RGBA, L 등 다양한 모드 처리)
+    if img.mode != 'RGB':
+        img = img.convert('RGB')
     
     # 숫자 워터마크 추가 (1~9 모두 표시)
     if number > 0:
-        h, w = result.shape[:2]
-        font = cv2.FONT_HERSHEY_BOLD
+        draw = ImageDraw.Draw(img)
         text = str(number)
         
-        # 이미지 크기에 비례한 폰트 크기
-        font_scale = min(w, h) / 150
-        thickness = max(2, int(font_scale * 3))
+        # 폰트 크기 계산 (이미지 크기에 비례)
+        w, h = img.size
+        font_size = max(20, int(min(w, h) / 10))
+        
+        try:
+            # 시스템 기본 폰트 사용 시도
+            font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", font_size)
+        except:
+            try:
+                # macOS 폰트
+                font = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", font_size)
+            except:
+                # 기본 폰트 (크기 조절 불가)
+                font = ImageFont.load_default()
         
         # 텍스트 크기 계산
-        (text_w, text_h), baseline = cv2.getTextSize(text, font, font_scale, thickness)
+        bbox = draw.textbbox((0, 0), text, font=font)
+        text_w = bbox[2] - bbox[0]
+        text_h = bbox[3] - bbox[1]
         
         # 우측 상단에 배치
         padding = 10
         x = w - text_w - padding
-        y = text_h + padding
+        y = padding
         
         # 배경 (반투명 검은색 사각형)
-        overlay = result.copy()
-        cv2.rectangle(
-            overlay,
-            (x - 5, y - text_h - 5),
-            (x + text_w + 5, y + baseline + 5),
-            (0, 0, 0),
-            -1
+        bg_padding = 5
+        draw.rectangle(
+            [x - bg_padding, y - bg_padding, x + text_w + bg_padding, y + text_h + bg_padding],
+            fill=(0, 0, 0, 180)
         )
-        # 알파 블렌딩
-        alpha = 0.6
-        result = cv2.addWeighted(overlay, alpha, result, 1 - alpha, 0)
         
         # 텍스트 (흰색)
-        cv2.putText(result, text, (x, y), font, font_scale, (255, 255, 255), thickness)
+        draw.text((x, y), text, fill=(255, 255, 255), font=font)
     
-    return result
+    # PIL Image → numpy array (cv2 형식)
+    img_np = np.array(img)
+    img_np = cv2.cvtColor(img_np, cv2.COLOR_RGB2BGR)
+    
+    return img_np
 
 
 # ==========================================================
@@ -98,7 +107,7 @@ def generate_phase_a_problem():
     
     base_x = metadata["base_x"]
     y_min, y_max = metadata["ticket_y_range"]
-    cut_rectangle = [base_x - 10, y_min, 20, y_max - y_min]
+    cut_rectangle = [base_x - 10, y_min, 50, y_max - y_min]
     
     # 이미지 크기 (백분율 변환용)
     img_h, img_w = canvas.shape[:2]
@@ -140,7 +149,7 @@ def generate_cutline(
     x_jitter=2,
     ticket_y_ratio=(0.10, 0.89),
     dash_length=13,
-    thickness=20,
+    thickness=32,
     segment_ratio=1.3
 ):
     """

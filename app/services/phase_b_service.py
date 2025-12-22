@@ -1,5 +1,7 @@
 # app/services/phase_b_service.py
 
+import io
+import base64
 import random
 from time import time
 from typing import Dict, Any, List, Tuple
@@ -29,19 +31,18 @@ def generate_phase_b_payload(
     """
     processed_grid = []
     
-    # 정답 이미지 인덱스 찾기
-    target_indices = [i for i, img in enumerate(problem_data["images"]) if img["is_target"]]
-    
-    # 정답 이미지에 할당된 숫자들 (순서대로 정렬)
-    target_numbers = sorted([fixed_numbers[i] for i in target_indices])
-    
     for idx, img_info in enumerate(problem_data["images"]):
-        # 이미지 파일 로드
-        img_path = img_info["path"]
+        # 이미지 Base64 디코딩
+        img_base64 = img_info.get("image_base64")
+        if not img_base64:
+            raise RuntimeError(f"이미지 Base64 데이터 없음: index {idx}")
+        
         try:
-            img = Image.open(img_path)
+            # Base64 → PIL Image
+            img_data = base64.b64decode(img_base64)
+            img = Image.open(io.BytesIO(img_data))
         except Exception as e:
-            raise RuntimeError(f"이미지 로드 실패: {img_path}, Error: {e}")
+            raise RuntimeError(f"이미지 디코딩 실패: index {idx}, Error: {e}")
         
         # 이 이미지에 할당된 숫자 (고정: 1~9)
         assigned_number = fixed_numbers[idx]
@@ -50,18 +51,14 @@ def generate_phase_b_payload(
         marked = apply_watermark_and_noise(img, assigned_number, fail_count)
         
         processed_grid.append({
-            "slot_index": idx,
-            "label": img_info["label"],
+            "image_id": img_info["image_id"],  # AI 서버에서 받은 UUID
             "image_base64": to_base64(marked),
-            "number": assigned_number  # FE에 숫자 정보 전달 (디버깅용, 선택적)
         })
     
     return {
         "type": "PHASE_B",
         "grid": processed_grid,
-        "time_limit": PHASE_B_TIME_LIMIT,
         "question": problem_data["question"],
-        "target_numbers": target_numbers  # 정답 숫자들 (순서대로)
     }
 
 
@@ -78,30 +75,50 @@ def generate_phase_b_internal(
     
     Returns:
         {
-            "number_to_index": {
-                "1": "0",  # 숫자 1은 인덱스 0
-                "2": "1",  # 숫자 2는 인덱스 1
-                ...
-            },
-            "correct_numbers": [3, 5, 7, 9],  # 정답 숫자들 (순서대로)
+            "number_to_index": {"1": "0", "2": "1", ...},
+            "number_to_uuid": {"1": "uuid-1", "2": "uuid-2", ...},
+            "correct_numbers": [3, 5, 7, 9],
+            "correct_uuids": ["uuid-3", "uuid-5", "uuid-7", "uuid-9"],
             "issued_at": 1234567890
         }
     """
-    # 숫자 → 인덱스 매핑
-    number_to_index = {
-        str(num): str(idx) 
-        for idx, num in enumerate(fixed_numbers)
-    }
+    # ============================================================
+    # [주석] 순서 관련 데이터 - 추후 활성화 예정
+    # ============================================================
+    # # 숫자 → 인덱스 매핑
+    # number_to_index = {
+    #     str(num): str(idx) 
+    #     for idx, num in enumerate(fixed_numbers)
+    # }
+    # 
+    # # 숫자 → UUID 매핑
+    # number_to_uuid = {
+    #     str(fixed_numbers[idx]): problem_data["images"][idx]["image_id"]
+    #     for idx in range(len(problem_data["images"]))
+    # }
+    # 
+    # # 정답 이미지 인덱스 찾기
+    # target_indices = [i for i, img in enumerate(problem_data["images"]) if img["is_target"]]
+    # 
+    # # 정답 숫자들 (순서대로 정렬)
+    # correct_numbers = sorted([fixed_numbers[i] for i in target_indices])
+    # 
+    # # 정답 UUID들 (숫자 순서대로)
+    # correct_uuids = [number_to_uuid[str(num)] for num in correct_numbers]
+    # ============================================================
     
-    # 정답 이미지 인덱스 찾기
-    target_indices = [i for i, img in enumerate(problem_data["images"]) if img["is_target"]]
-    
-    # 정답 숫자들 (순서대로 정렬)
-    correct_numbers = sorted([fixed_numbers[i] for i in target_indices])
+    # 정답 UUID만 추출 (순서 무관)
+    correct_uuids = [
+        img["image_id"] 
+        for img in problem_data["images"] 
+        if img["is_target"]
+    ]
     
     return {
-        "number_to_index": number_to_index,
-        "correct_numbers": correct_numbers,
+        # "number_to_index": number_to_index,
+        # "number_to_uuid": number_to_uuid,
+        # "correct_numbers": correct_numbers,
+        "correct_uuids": correct_uuids,
         "issued_at": int(time() * 1000)
     }
 
