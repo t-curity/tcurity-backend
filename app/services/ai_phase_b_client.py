@@ -13,23 +13,9 @@ import urllib.error
 from typing import Dict, Any, List
 
 
+
 # AI 서버 URL (Phase A와 동일한 서버 사용)
 AI_SERVER_URL = os.getenv("AI_SERVER_URL", "http://10.0.83.48:9000")
-
-
-# 로컬 fallback용 규칙 (AI 서버 참고)
-PHASE_B_RULES: Dict[str, List[str]] = {
-    "Animals": ["Building", "Devices", "Fashion", "Vehicle"],
-    "Birds": ["Building", "Devices", "Fashion", "Food"],
-    "Building": ["Nature", "Devices", "Fashion", "Sports"],
-    "Devices": ["Instrument", "Building", "Fashion", "Food"],
-    "Fashion": ["Devices", "Instrument", "Building", "Food"],
-    "Food": ["Instrument", "Devices", "Fashion", "Nature"],
-    "Instrument": ["Building", "Devices", "Fashion", "Nature"],
-    "Nature": ["Building", "Devices", "Instrument", "Vehicle"],
-    "Sports": ["Fashion", "Building", "Devices", "Food"],
-    "Vehicle": ["Building", "Nature", "Devices", "Instrument"],
-}
 
 
 def generate_phase_b_problem_from_ai(target_class: str = None) -> Dict[str, Any]:
@@ -37,7 +23,7 @@ def generate_phase_b_problem_from_ai(target_class: str = None) -> Dict[str, Any]
     AI 서버에서 Phase B 문제를 생성
     
     Args:
-        target_class: 정답 클래스 (None이면 랜덤 선택)
+        target_class: 정답 클래스 (None이면 AI 서버가 랜덤 선택)
         
     Returns:
         {
@@ -53,10 +39,6 @@ def generate_phase_b_problem_from_ai(target_class: str = None) -> Dict[str, Any]
             ]
         }
     """
-    # target_class가 없으면 랜덤 선택
-    if target_class is None:
-        target_class = random.choice(list(PHASE_B_RULES.keys()))
-    
     url = f"{AI_SERVER_URL}/phase-b/generate"
     
     payload = {

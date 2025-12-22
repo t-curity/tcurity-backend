@@ -72,7 +72,8 @@ def verify_phase_a(
             session_id,
             {
                 "phase_b": {
-                    "correct_answer": internal_payload["correct_answer"],
+                    "correct_numbers": internal_payload["correct_numbers"],
+                    "number_to_index": internal_payload["number_to_index"],
                     "issued_at": internal_payload["issued_at"],
                     "fail_count": fail_count,
                 }
@@ -121,6 +122,43 @@ def check_phase_b_behavior(behavior) -> bool:
     return True  # 추후 AI 연동 예정
 
 
+def check_number_order_correctness(
+    user_answer: List[str],
+    correct_numbers: List[int],
+    number_to_index: Dict[str, str]
+) -> bool:
+    """
+    사용자가 숫자 순서대로 선택했는지 확인
+    
+    Args:
+        user_answer: ["0", "2", "5", "7"] - 사용자가 드래그한 이미지 인덱스 순서
+        correct_numbers: [3, 5, 7, 9] - 정답 숫자들 (순서대로)
+        number_to_index: {"3": "0", "5": "2", "7": "5", "9": "7", ...}
+    
+    Returns:
+        True if correct order, False otherwise
+    
+    Example:
+        - 이미지 인덱스 0에 숫자 3
+        - 이미지 인덱스 2에 숫자 5
+        - 이미지 인덱스 5에 숫자 7
+        - 이미지 인덱스 7에 숫자 9
+        - 사용자가 ["0", "2", "5", "7"] 순서로 드래그 → 정답 (3→5→7→9)
+    """
+    if len(user_answer) != len(correct_numbers):
+        return False
+    
+    # 사용자가 선택한 순서대로 검증
+    for i, user_idx in enumerate(user_answer):
+        expected_number = correct_numbers[i]  # 예: 3, 5, 7, 9
+        expected_idx = number_to_index.get(str(expected_number))
+        
+        if user_idx != expected_idx:
+            return False
+    
+    return True
+
+
 def handle_phase_b_fail(
     session_id: str,
     session: Dict[str, Any],
@@ -140,7 +178,8 @@ def handle_phase_b_fail(
         session_id,
         {
             "phase_b": {
-                "correct_answer": internal_payload["correct_answer"],
+                "correct_numbers": internal_payload["correct_numbers"],
+                "number_to_index": internal_payload["number_to_index"],
                 "issued_at": internal_payload["issued_at"],
                 "fail_count": new_fail,
             }
@@ -193,7 +232,26 @@ def verify_phase_b(
             ErrorCode.TIME_LIMIT_EXCEEDED,
         )
 
+    # ---------------- 순서 검증 (백엔드) ----------------
+    correct_numbers = session["phase_b"]["correct_numbers"]
+    number_to_index = session["phase_b"]["number_to_index"]
+    
+    is_correct_order = check_number_order_correctness(
+        user_answer=user_answer,
+        correct_numbers=correct_numbers,
+        number_to_index=number_to_index
+    )
+    
+    if not is_correct_order:
+        return handle_phase_b_fail(
+            session_id,
+            session,
+            fail_count,
+            ErrorCode.WRONG_ANSWER,
+        )
+
     # ---------------- AI 서버 호출 (Phase B) ----------------
+    # 순서가 맞으면 AI 서버에서 행동 패턴 검증
     try:
         # AI 서버에 정답 + 행동 데이터 전송
         ai_result = verify_phase_b_with_ai(
@@ -201,34 +259,27 @@ def verify_phase_b(
             correct_answer=correct,
             behavior_data=behavior
         )
-        is_correct = ai_result.get("pass", False)
-        # AI가 실패하면 기본 정답 체크로 fallback
-        if not is_correct:
-            is_correct = user_answer == correct
+        is_human = ai_result.get("pass", False)
     except Exception:
-        # AI 서버 오류 시 기본 정답 체크로 fallback
-        is_correct = user_answer == correct
+        # AI 서버 오류 시 순서만 맞으면 통과
+        is_human = True
+
 
     # 행동 검증 (현재는 더미, AI 고도화 시 활용)
-    is_human = check_phase_b_behavior(behavior)
+    # is_human은 위에서 AI 서버 결과로 받음
 
-    if is_correct and is_human:
+    if is_human:
         set_session_status(session_id, SessionStatus.COMPLETED)
         return BaseResponse(
             success=True,
             data={"message": "CAPTCHA 인증 완료"},
         )
 
-    error = (
-        ErrorCode.WRONG_ANSWER
-        if not is_correct
-        else ErrorCode.ANOMALOUS_BEHAVIOR
-    )
-
+    # AI 서버가 봇으로 판단
     return handle_phase_b_fail(
         session_id,
         session,
         fail_count,
-        error,
+        ErrorCode.ANOMALOUS_BEHAVIOR,
     )
 
