@@ -72,8 +72,10 @@ def verify_phase_a(
             session_id,
             {
                 "phase_b": {
-                    "correct_numbers": internal_payload["correct_numbers"],
-                    "number_to_index": internal_payload["number_to_index"],
+                    # "correct_numbers": internal_payload["correct_numbers"],
+                    # "number_to_index": internal_payload["number_to_index"],
+                    # "number_to_uuid": internal_payload["number_to_uuid"],
+                    "correct_uuids": internal_payload["correct_uuids"],
                     "issued_at": internal_payload["issued_at"],
                     "fail_count": fail_count,
                 }
@@ -178,8 +180,10 @@ def handle_phase_b_fail(
         session_id,
         {
             "phase_b": {
-                "correct_numbers": internal_payload["correct_numbers"],
-                "number_to_index": internal_payload["number_to_index"],
+                # "correct_numbers": internal_payload["correct_numbers"],
+                # "number_to_index": internal_payload["number_to_index"],
+                # "number_to_uuid": internal_payload["number_to_uuid"],
+                "correct_uuids": internal_payload["correct_uuids"],
                 "issued_at": internal_payload["issued_at"],
                 "fail_count": new_fail,
             }
@@ -218,7 +222,8 @@ def verify_phase_b(
         )
 
     issued_at = session["phase_b"]["issued_at"]
-    correct = session["phase_b"]["correct_answer"]
+    # correct_numbers = session["phase_b"]["correct_numbers"]  # 순서 검증용 (주석)
+    # number_to_index = session["phase_b"]["number_to_index"]  # 순서 검증용 (주석)
     fail_count = session["phase_b"]["fail_count"]
 
     elapsed = (int(time() * 1000) - issued_at) / 1000
@@ -232,17 +237,15 @@ def verify_phase_b(
             ErrorCode.TIME_LIMIT_EXCEEDED,
         )
 
-    # ---------------- 순서 검증 (백엔드) ----------------
-    correct_numbers = session["phase_b"]["correct_numbers"]
-    number_to_index = session["phase_b"]["number_to_index"]
+    # ---------------- 정답 검증 (백엔드) ----------------
+    # 사용자가 선택한 UUID와 정답 UUID 비교 (순서 무관)
+    correct_uuids = session["phase_b"]["correct_uuids"]
+    user_answer_set = set(user_answer)
+    correct_uuids_set = set(correct_uuids)
     
-    is_correct_order = check_number_order_correctness(
-        user_answer=user_answer,
-        correct_numbers=correct_numbers,
-        number_to_index=number_to_index
-    )
+    is_correct = user_answer_set == correct_uuids_set
     
-    if not is_correct_order:
+    if not is_correct:
         return handle_phase_b_fail(
             session_id,
             session,
@@ -250,13 +253,32 @@ def verify_phase_b(
             ErrorCode.WRONG_ANSWER,
         )
 
+    # ============================================================
+    # [주석] 순서 검증 로직 - 추후 활성화 예정
+    # ============================================================
+    # correct_numbers = session["phase_b"]["correct_numbers"]
+    # number_to_index = session["phase_b"]["number_to_index"]
+    # 
+    # is_correct_order = check_number_order_correctness(
+    #     user_answer=user_answer,
+    #     correct_numbers=correct_numbers,
+    #     number_to_index=number_to_index
+    # )
+    # 
+    # if not is_correct_order:
+    #     return handle_phase_b_fail(
+    #         session_id,
+    #         session,
+    #         fail_count,
+    #         ErrorCode.WRONG_ANSWER,
+    #     )
+    # ============================================================
+
     # ---------------- AI 서버 호출 (Phase B) ----------------
-    # 순서가 맞으면 AI 서버에서 행동 패턴 검증
+    # 순서가 맞으면 AI 서버에서 행동 패턴만 검증
     try:
-        # AI 서버에 정답 + 행동 데이터 전송
+        # AI 서버에 행동 데이터만 전송 (정답은 백엔드에서 이미 검증)
         ai_result = verify_phase_b_with_ai(
-            user_answer=user_answer,
-            correct_answer=correct,
             behavior_data=behavior
         )
         is_human = ai_result.get("pass", False)

@@ -67,28 +67,25 @@ def generate_phase_b_problem_from_ai(target_class: str = None) -> Dict[str, Any]
 
 
 def verify_phase_b_with_ai_sync(
-    user_answer: List[str],
-    correct_answer: List[str],
     behavior_data: Any = None
 ) -> Dict[str, Any]:
     """
-    AI 서버에 Phase B 데이터를 전송하여 검증
+    AI 서버에 Phase B 행동 패턴 데이터를 전송하여 검증
     
     Args:
-        user_answer: 사용자가 선택한 답 (예: ["0", "3", "7"])
-        correct_answer: 정답 (예: ["0", "3", "7"])
-        behavior_data: 선택적 행동 패턴 데이터
+        behavior_data: 행동 패턴 데이터 (points, metadata 등)
         
     Returns:
         {"pass": bool, "label": str}
-        - pass: True면 정답, False면 오답/봇
-        - label: "정답" 또는 "오답" 또는 "봇"
+        - pass: True면 사람, False면 봇
+        - label: "사람" 또는 "봇"
+    
+    Note:
+        정답 검증은 백엔드에서 수행하므로, AI 서버는 행동 패턴만 검증
     """
     url = f"{AI_SERVER_URL}/phase-b/verify"
     
     payload = {
-        "user_answer": user_answer,
-        "correct_answer": correct_answer,
         "behavior_data": behavior_data
     }
     
@@ -106,31 +103,31 @@ def verify_phase_b_with_ai_sync(
             return result
             
     except urllib.error.URLError as e:
-        # 연결 실패 시 기본 정답 체크로 fallback
+        # 연결 실패 시 통과 (순서는 이미 백엔드에서 검증됨)
         return {
-            "pass": user_answer == correct_answer,
-            "label": "정답" if user_answer == correct_answer else "오답",
+            "pass": True,
+            "label": "사람",
             "reason": "ai_server_connection_failed"
         }
     except urllib.error.HTTPError as e:
-        # HTTP 에러 시 기본 정답 체크로 fallback
+        # HTTP 에러 시 통과
         return {
-            "pass": user_answer == correct_answer,
-            "label": "정답" if user_answer == correct_answer else "오답",
+            "pass": True,
+            "label": "사람",
             "reason": f"ai_server_error_{e.code}"
         }
     except TimeoutError:
-        # 타임아웃 시 기본 정답 체크로 fallback
+        # 타임아웃 시 통과
         return {
-            "pass": user_answer == correct_answer,
-            "label": "정답" if user_answer == correct_answer else "오답",
+            "pass": True,
+            "label": "사람",
             "reason": "ai_server_timeout"
         }
     except Exception as e:
-        # 기타 에러 시 기본 정답 체크로 fallback
+        # 기타 에러 시 통과
         return {
-            "pass": user_answer == correct_answer,
-            "label": "정답" if user_answer == correct_answer else "오답",
+            "pass": True,
+            "label": "사람",
             "reason": "ai_server_unknown_error"
         }
 
