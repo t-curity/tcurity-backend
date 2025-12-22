@@ -18,22 +18,60 @@ def to_base64(img):
     return base64.b64encode(buffer).decode('utf-8')
 
 
-def apply_watermark_and_noise(img, order, fail_count):
+def apply_watermark_and_noise(img, number, fail_count):
     """
-    Phase B 이미지에 워터마크/노이즈 적용
-    - order: 정답 순서 (0이면 정답 아님)
-    - fail_count: 실패 횟수에 따라 노이즈 강도 조절 가능
+    Phase B 이미지에 숫자 워터마크 적용
+    - number: 이미지에 표시할 숫자 (1~9)
+    - fail_count: 실패 횟수 (현재 미사용, 추후 노이즈 추가 시 사용)
     """
-    if img is None:
+    # PIL Image를 numpy array로 변환
+    if hasattr(img, 'mode'):  # PIL Image
+        img_np = np.array(img)
+        if len(img_np.shape) == 3 and img_np.shape[2] == 3:  # RGB
+            img_np = cv2.cvtColor(img_np, cv2.COLOR_RGB2BGR)
+        elif len(img_np.shape) == 3 and img_np.shape[2] == 4:  # RGBA
+            img_np = cv2.cvtColor(img_np, cv2.COLOR_RGBA2BGR)
+    else:
+        img_np = img
+    
+    if img_np is None:
         return img
     
-    result = img.copy()
+    result = img_np.copy()
     
-    # 실패 횟수에 따른 노이즈 추가 (선택적)
-    if fail_count > 0:
-        noise_intensity = min(fail_count * 5, 30)
-        noise = np.random.randint(-noise_intensity, noise_intensity, result.shape, dtype=np.int16)
-        result = np.clip(result.astype(np.int16) + noise, 0, 255).astype(np.uint8)
+    # 숫자 워터마크 추가 (1~9 모두 표시)
+    if number > 0:
+        h, w = result.shape[:2]
+        font = cv2.FONT_HERSHEY_BOLD
+        text = str(number)
+        
+        # 이미지 크기에 비례한 폰트 크기
+        font_scale = min(w, h) / 150
+        thickness = max(2, int(font_scale * 3))
+        
+        # 텍스트 크기 계산
+        (text_w, text_h), baseline = cv2.getTextSize(text, font, font_scale, thickness)
+        
+        # 우측 상단에 배치
+        padding = 10
+        x = w - text_w - padding
+        y = text_h + padding
+        
+        # 배경 (반투명 검은색 사각형)
+        overlay = result.copy()
+        cv2.rectangle(
+            overlay,
+            (x - 5, y - text_h - 5),
+            (x + text_w + 5, y + baseline + 5),
+            (0, 0, 0),
+            -1
+        )
+        # 알파 블렌딩
+        alpha = 0.6
+        result = cv2.addWeighted(overlay, alpha, result, 1 - alpha, 0)
+        
+        # 텍스트 (흰색)
+        cv2.putText(result, text, (x, y), font, font_scale, (255, 255, 255), thickness)
     
     return result
 
