@@ -203,10 +203,15 @@ def handle_phase_b_fail(
 def verify_phase_b(
     session_id: str,
     user_answer: List[str],
-    behavior,
+    behavior_pattern_data: Dict[str, Any],
 ) -> BaseResponse:
     """
     Phase B 정답 + 행동 검증
+    
+    Args:
+        session_id: 세션 ID
+        user_answer: 사용자가 선택한 이미지 UUID 리스트
+        behavior_pattern_data: 행동 패턴 데이터 {"points": [...], "metadata": {...}}
     """
 
     session = get_session_and_validate(session_id)
@@ -275,21 +280,21 @@ def verify_phase_b(
     # ============================================================
 
     # ---------------- AI 서버 호출 (Phase B) ----------------
-    # 순서가 맞으면 AI 서버에서 행동 패턴만 검증
+    # 정답이 맞으면 AI 서버에서 행동 패턴만 검증
     try:
+        # FE payload에서 points와 metadata 추출
+        points = behavior_pattern_data.get("points", [])
+        metadata = behavior_pattern_data.get("metadata", {})
+        
         # AI 서버에 행동 데이터만 전송 (정답은 백엔드에서 이미 검증)
-        ai_result = verify_phase_b_with_ai(
-            behavior_data=behavior
-        )
+        ai_result = verify_phase_b_with_ai(points, metadata)
         is_human = ai_result.get("pass", False)
     except Exception:
-        # AI 서버 오류 시 순서만 맞으면 통과
+        # AI 서버 오류 시 정답만 맞으면 통과 (AI 모델 준비 전)
         is_human = True
 
 
-    # 행동 검증 (현재는 더미, AI 고도화 시 활용)
-    # is_human은 위에서 AI 서버 결과로 받음
-
+    # 행동 검증 결과 처리
     if is_human:
         set_session_status(session_id, SessionStatus.COMPLETED)
         return BaseResponse(
