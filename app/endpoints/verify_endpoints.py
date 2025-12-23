@@ -46,6 +46,18 @@ def captcha_submit(
     # PHASE B 처리
     # -------------------------
     if status == SessionStatus.PHASE_B:
+        # behavior_pattern_data 필수 검증
+        bpd = request.behavior_pattern_data
+        
+        if bpd is None:
+            return BaseResponse(
+                status=status.value,
+                success=False,
+                error=ErrorInfo(
+                    code=ErrorCode.INVALID_PAYLOAD,
+                    message="behavior_pattern_data는 PHASE_B에서 필수입니다."
+                )
+            )
 
         if request.user_answer is None:
             return BaseResponse(
@@ -57,7 +69,8 @@ def captcha_submit(
                 )
             )
 
-        return verify_phase_b(session_id, request.user_answer, request.behavior_pattern_data)
+        return verify_phase_b(session_id, request.user_answer, bpd)
+
 
     # -------------------------
     # COMPLETED 처리
