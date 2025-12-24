@@ -83,9 +83,13 @@ def verify_phase_a(
         )
 
         return BaseResponse(
+            status=SessionStatus.PHASE_B.value,
             success=True,
-            data={"problem": fe_payload},
+            data={"problem": fe_payload},  # Phase A와 동일하게 problem으로 래핑
         )
+
+
+
 
     # ==================================================
     #   FAIL → Phase A 재시도
@@ -103,7 +107,8 @@ def verify_phase_a(
     )
 
     return BaseResponse(
-        success=False,
+        success=True,
+        status=SessionStatus.PHASE_A.value,
         data={"problem": fe_payload},
         error=ErrorInfo(
             code=ErrorCode.LOW_CONFIDENCE_BEHAVIOR,
@@ -191,13 +196,15 @@ def handle_phase_b_fail(
     )
 
     return BaseResponse(
-        success=False,
+        status=SessionStatus.PHASE_B.value,  # 여전히 PHASE_B 상태
+        success=True,
         data={"problem": fe_payload},
         error=ErrorInfo(
             code=error,
             message="정답이 올바르지 않거나 행동 분석 실패",
         ),
     )
+
 
 
 def verify_phase_b(
@@ -298,9 +305,10 @@ def verify_phase_b(
     if is_human:
         set_session_status(session_id, SessionStatus.COMPLETED)
         return BaseResponse(
+            status=SessionStatus.COMPLETED.value,  # COMPLETED 상태
             success=True,
-            data={"message": "CAPTCHA 인증 완료"},
         )
+
 
     # AI 서버가 봇으로 판단
     return handle_phase_b_fail(
