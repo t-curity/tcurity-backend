@@ -107,10 +107,19 @@ def generate_phase_a_problem():
     
     base_x = metadata["base_x"]
     y_min, y_max = metadata["ticket_y_range"]
-    cut_rectangle = [base_x - 10, y_min, 50, y_max - y_min]
+    
+    # 절취선 영역 정의 (중심 축 기준)
+    CUT_WIDTH = 50  # 절취선 폭
+    cut_rectangle = [
+        base_x - CUT_WIDTH // 2,  # 중심에서 절반만큼 왼쪽
+        y_min,
+        CUT_WIDTH,
+        y_max - y_min
+    ]
     
     # 이미지 크기 (백분율 변환용)
     img_h, img_w = canvas.shape[:2]
+
     
     return {
         "image_base64": image_base64,

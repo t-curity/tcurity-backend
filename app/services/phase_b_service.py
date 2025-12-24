@@ -62,6 +62,7 @@ def generate_phase_b_payload(
     }
 
 
+
 def generate_phase_b_internal(
     problem_data: Dict[str, Any],
     fixed_numbers: List[int]
@@ -70,57 +71,26 @@ def generate_phase_b_internal(
     서버 세션에 저장할 내부 정보 생성
     
     Args:
-        problem_data: AI 서버 응답
+        problem_data: AI 서버 응답 (answer_uuids 포함)
         fixed_numbers: 각 이미지에 할당된 숫자 리스트 [1, 2, 3, 4, 5, 6, 7, 8, 9]
     
     Returns:
         {
-            "number_to_index": {"1": "0", "2": "1", ...},
-            "number_to_uuid": {"1": "uuid-1", "2": "uuid-2", ...},
-            "correct_numbers": [3, 5, 7, 9],
             "correct_uuids": ["uuid-3", "uuid-5", "uuid-7", "uuid-9"],
             "issued_at": 1234567890
         }
     """
-    # ============================================================
-    # [주석] 순서 관련 데이터 - 추후 활성화 예정
-    # ============================================================
-    # # 숫자 → 인덱스 매핑
-    # number_to_index = {
-    #     str(num): str(idx) 
-    #     for idx, num in enumerate(fixed_numbers)
-    # }
-    # 
-    # # 숫자 → UUID 매핑
-    # number_to_uuid = {
-    #     str(fixed_numbers[idx]): problem_data["images"][idx]["image_id"]
-    #     for idx in range(len(problem_data["images"]))
-    # }
-    # 
-    # # 정답 이미지 인덱스 찾기
-    # target_indices = [i for i, img in enumerate(problem_data["images"]) if img["is_target"]]
-    # 
-    # # 정답 숫자들 (순서대로 정렬)
-    # correct_numbers = sorted([fixed_numbers[i] for i in target_indices])
-    # 
-    # # 정답 UUID들 (숫자 순서대로)
-    # correct_uuids = [number_to_uuid[str(num)] for num in correct_numbers]
-    # ============================================================
+    # AI 서버가 직접 answer_uuids를 반환하므로 그대로 사용
+    correct_uuids = problem_data.get("answer_uuids", [])
     
-    # 정답 UUID만 추출 (순서 무관)
-    correct_uuids = [
-        img["image_id"] 
-        for img in problem_data["images"] 
-        if img["is_target"]
-    ]
+    if not correct_uuids:
+        raise RuntimeError("AI 서버 응답에 answer_uuids가 없습니다")
     
     return {
-        # "number_to_index": number_to_index,
-        # "number_to_uuid": number_to_uuid,
-        # "correct_numbers": correct_numbers,
         "correct_uuids": correct_uuids,
         "issued_at": int(time() * 1000)
     }
+
 
 
 def generate_phase_b_both(fail_count: int) -> Tuple[Dict[str, Any], Dict[str, Any]]:
@@ -157,8 +127,8 @@ def generate_phase_b_both(fail_count: int) -> Tuple[Dict[str, Any], Dict[str, An
     )
     
     # 디버깅 로그
-    print(f"[PHASE B] CORRECT NUMBERS = {internal_payload['correct_numbers']}")
-    print(f"[PHASE B] TARGET CLASS = {problem_data['target_class']}")
+    # print(f"[PHASE B] CORRECT NUMBERS = {internal_payload['correct_numbers']}")
+    # print(f"[PHASE B] TARGET CLASS = {problem_data['target_class']}")
     
     return fe_payload, internal_payload
 
