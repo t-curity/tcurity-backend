@@ -150,8 +150,11 @@ def verify_phase_b_with_ai_sync(
     # 포인트 필터링 (정규화 좌표 그대로)
     filtered_points = filter_and_normalize_points_phase_b(user_points)
     
-    # 유효 포인트가 너무 적으면 즉시 통과 처리 (AI 모델 준비 전)
-    if len(filtered_points) < 3:  # AI 서버 기준: 최소 3개 포인트 필요
+    print(f"[DEBUG] Phase B AI 호출 - 원본 포인트: {len(user_points)}개, 필터링 후: {len(filtered_points)}개")
+    
+    # 유효 포인트가 너무 적으면 즉시 통과 처리
+    if len(filtered_points) < 2:  # Phase B는 클릭이므로 2개로 완화
+        print(f"[DEBUG] 포인트 부족으로 AI 서버 호출 스킵 (최소 2개 필요)")
         return {
             "pass": True,
             "label": "사람",
@@ -169,6 +172,9 @@ def verify_phase_b_with_ai_sync(
         }
     }
     
+    print(f"[DEBUG] AI 서버 호출: {url}")
+    print(f"[DEBUG] Payload: points={len(filtered_points)}개, metadata={metadata.get('deviceType')}")
+    
     try:
         data = json.dumps(payload).encode("utf-8")
         req = urllib.request.Request(
@@ -180,10 +186,12 @@ def verify_phase_b_with_ai_sync(
         
         with urllib.request.urlopen(req, timeout=10) as response:
             result = json.loads(response.read().decode("utf-8"))
+            print(f"[DEBUG] AI 서버 응답: {result}")
             return result
             
     except urllib.error.URLError as e:
         # 연결 실패 시 통과 (AI 모델 준비 전)
+        print(f"[DEBUG] AI 서버 연결 실패: {e}")
         return {
             "pass": True,
             "label": "사람",
@@ -191,6 +199,7 @@ def verify_phase_b_with_ai_sync(
         }
     except urllib.error.HTTPError as e:
         # HTTP 에러 시 통과
+        print(f"[DEBUG] AI 서버 HTTP 에러: {e.code}")
         return {
             "pass": True,
             "label": "사람",
@@ -198,6 +207,7 @@ def verify_phase_b_with_ai_sync(
         }
     except TimeoutError:
         # 타임아웃 시 통과
+        print(f"[DEBUG] AI 서버 타임아웃")
         return {
             "pass": True,
             "label": "사람",
@@ -205,11 +215,13 @@ def verify_phase_b_with_ai_sync(
         }
     except Exception as e:
         # 기타 에러 시 통과
+        print(f"[DEBUG] AI 서버 알 수 없는 에러: {e}")
         return {
             "pass": True,
             "label": "사람",
             "reason": "ai_server_unknown_error"
         }
+
 
 
 # 별칭 (async 버전이 필요한 경우를 위해)

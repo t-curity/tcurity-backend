@@ -46,29 +46,35 @@ def captcha_submit(
     # PHASE B 처리
     # -------------------------
     if status == SessionStatus.PHASE_B:
+        print(f"[DEBUG] Phase B 제출 시작 - session_id: {session_id}")
+        
         # behavior_pattern_data 필수 검증
         bpd = request.behavior_pattern_data
         
-        if bpd is None:
-            return BaseResponse(
-                status=status.value,
-                success=False,
-                error=ErrorInfo(
-                    code=ErrorCode.INVALID_PAYLOAD,
-                    message="behavior_pattern_data는 PHASE_B에서 필수입니다."
-                )
-            )
+        # if bpd is None:
+        #     print(f"[DEBUG] behavior_pattern_data 누락")
+        #     return BaseResponse(
+        #         status=status.value,
+        #         success=False,
+        #         error=ErrorInfo(
+        #             code=ErrorCode.INVALID_PAYLOAD,
+        #             message="behavior_pattern_data는 PHASE_B에서 필수입니다."
+        #         )
+        #     )
 
-        if request.user_answer is None:
-            return BaseResponse(
-                status=status.value,
-                success=False,
-                error=ErrorInfo(
-                    code=ErrorCode.INVALID_PAYLOAD,
-                    message="user_answer는 PHASE_B에서 필수입니다."
-                )
-            )
+        # if request.user_answer is None:
+        #     print(f"[DEBUG] user_answer 누락")
+        #     return BaseResponse(
+        #         status=status.value,
+        #         success=False,
+        #         error=ErrorInfo(
+        #             code=ErrorCode.INVALID_PAYLOAD,
+        #             message="user_answer는 PHASE_B에서 필수입니다."
+        #         )
+        #     )
 
+        bpd = {"points": request.points, "metadata": request.metadata}
+        print(f"[DEBUG] Phase B 검증 호출 - user_answer: {len(request.user_answer)}개")
         return verify_phase_b(session_id, request.user_answer, bpd)
 
 

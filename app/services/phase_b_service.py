@@ -51,15 +51,17 @@ def generate_phase_b_payload(
         marked = apply_watermark_and_noise(img, assigned_number, fail_count)
         
         processed_grid.append({
-            "image_id": img_info["image_id"],  # AI 서버에서 받은 UUID
-            "image_base64": to_base64(marked),
+            "image_id": img_info["image_id"],
+            "image": to_base64(marked),  # FE 타입: "image"
         })
     
     return {
-        "type": "PHASE_B",
-        "grid": processed_grid,
         "question": problem_data["question"],
+        "grid": processed_grid,
+        "phase": "2/2",  # FE 타입: "phase"
+        "time_limit": 300,  # 5분 (Phase A와 동일)
     }
+
 
 
 
