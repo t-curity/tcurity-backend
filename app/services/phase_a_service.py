@@ -46,12 +46,18 @@ def generate_phase_a_both() -> Tuple[Dict[str, Any], Dict[str, Any]]:
     
     # 절취선 중앙 x 좌표 (백분율)
     center_x = (cut_rect[0] + cut_rect[2] / 2) / img_w
-    # y 시작/끝 (백분율)
-    y_start = cut_rect[1] / img_h
-    y_end = (cut_rect[1] + cut_rect[3]) / img_h
-    # 너비 (백분율)
-    line_width = cut_rect[2] / img_w
     
+    # y 시작/끝 (백분율) - 위아래 여유 추가
+    y_margin_pixels = 100  # 위아래로 30픽셀씩 여유 (20 → 30)
+    y_start = max(0, (cut_rect[1] - y_margin_pixels) / img_h)  # 위로 여유
+    y_end = min(1, (cut_rect[1] + cut_rect[3] + y_margin_pixels) / img_h)  # 아래로 여유
+    
+    # 가이드라인 너비 (절취선보다 넓게 설정하여 여유 제공)
+    GUIDE_LINE_MARGIN = 1.7  # 70% 더 넓게 (1.5 → 1.7)
+    line_width = (cut_rect[2] * GUIDE_LINE_MARGIN) / img_w
+
+
+
     fe_payload = {
         "guide_line": {
             "start": [round(center_x, 4), round(y_start, 4)],
