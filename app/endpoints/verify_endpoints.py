@@ -106,18 +106,29 @@ def captcha_submit(
 
 from pydantic import BaseModel
 from time import time as current_time
+from typing import Optional
+from app.services.client_validation import validate_client_secret_key
 
 class CaptchaVerifyRequest(BaseModel):
     session_id: str
 
 @router.post("/verify", response_model=BaseResponse)
-def captcha_verify(req: CaptchaVerifyRequest):
+def captcha_verify(
+    req: CaptchaVerifyRequest,
+    client_secret_key: Optional[str] = Header(None, alias="X-Client-Secret-Key")
+):
     """
     S2S 최종 검증 API
-    - 외부 서버에서 세션 검증 시 사용
+    - 고객사 BE에서 세션 검증 시 사용
+    - X-Client-Secret-Key 헤더 필수
     - COMPLETED 상태만 성공으로 처리
     - BLOCKED 상태는 차단된 세션으로 처리
     """
+    # 1. 클라이언트 인증
+    client = validate_client_secret_key(client_secret_key)
+    print(f"[S2S] 인증 성공 - client_id: {client.get('client_id')}")
+    
+    # 2. 세션 검증
     session = get_session_and_validate(req.session_id)
     status = SessionStatus(session["status"])
     
@@ -130,7 +141,11 @@ def captcha_verify(req: CaptchaVerifyRequest):
                 code=ErrorCode.MAX_ATTEMPTS_EXCEEDED,
                 message="차단된 세션입니다. 최대 실패 횟수를 초과했습니다."
             ),
-            data={"session_id": req.session_id}
+            data={
+                "session_id": req.session_id,
+                "redirect": True,
+                "redirect_to": "/"
+            }
         )
     
     # COMPLETED 상태만 성공
