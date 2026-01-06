@@ -187,6 +187,11 @@ def handle_phase_b_fail(
                 code=ErrorCode.MAX_ATTEMPTS_EXCEEDED,
                 message=f"최대 실패 횟수({PHASE_B_MAX_FAIL_COUNT}회)를 초과했습니다.",
             ),
+            data={
+                "redirect": True,
+                "redirect_to": "/",  # 첫 페이지로 리다이렉트
+                "message": "세션이 차단되었습니다. 처음부터 다시 시작해주세요."
+            }
         )
     
     # 세션에서 저장된 난이도 가져오기 (없으면 NORMAL)
