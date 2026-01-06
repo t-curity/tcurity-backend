@@ -17,8 +17,9 @@ class SessionStatus(str, Enum):
 STATE_TRANSITION_RULES = {
     SessionStatus.INIT: [SessionStatus.PHASE_A],
     SessionStatus.PHASE_A: [SessionStatus.PHASE_A, SessionStatus.PHASE_B], # 재시도 또는 성공
-    SessionStatus.PHASE_B: [SessionStatus.PHASE_B, SessionStatus.COMPLETED], # 재시도 또는 성공
-    SessionStatus.COMPLETED: [SessionStatus.COMPLETED] # 최종 상태, 변경 불가
+    SessionStatus.PHASE_B: [SessionStatus.PHASE_B, SessionStatus.COMPLETED, SessionStatus.BLOCKED], # 재시도, 성공, 또는 차단
+    SessionStatus.COMPLETED: [SessionStatus.COMPLETED], # 최종 상태, 변경 불가
+    SessionStatus.BLOCKED: [SessionStatus.BLOCKED], # 차단 상태, 변경 불가
 }
 
 def is_valid_transition(current_status: SessionStatus, next_status: SessionStatus) -> bool:
