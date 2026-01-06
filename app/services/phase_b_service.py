@@ -80,15 +80,32 @@ def generate_phase_b_internal(
     
     Returns:
         {
-            "correct_uuids": ["uuid-3", "uuid-5", "uuid-7", "uuid-9"],
+            "correct_uuids": ["uuid-3", "uuid-5", "uuid-7", "uuid-9"],  # 숫자 순서대로 정렬됨
             "issued_at": 1234567890
         }
     """
-    # AI 서버가 직접 answer_uuids를 반환하므로 그대로 사용
-    correct_uuids = problem_data.get("answer_uuids", [])
+    # AI 서버가 반환한 정답 UUID 목록 (순서 무작위)
+    answer_uuids_set = set(problem_data.get("answer_uuids", []))
     
-    if not correct_uuids:
+    if not answer_uuids_set:
         raise RuntimeError("AI 서버 응답에 answer_uuids가 없습니다")
+    
+    # 이미지의 image_id와 할당된 숫자 매핑
+    # images 리스트 순서 = fixed_numbers 순서
+    uuid_to_number = {}
+    for idx, img_info in enumerate(problem_data.get("images", [])):
+        image_id = img_info.get("image_id")
+        assigned_number = fixed_numbers[idx]
+        uuid_to_number[image_id] = assigned_number
+    
+    # 정답 UUID들을 숫자 순서대로 정렬
+    # 사용자는 숫자가 작은 순서대로 드래그해야 함
+    correct_uuids = sorted(
+        [uuid for uuid in answer_uuids_set if uuid in uuid_to_number],
+        key=lambda uuid: uuid_to_number[uuid]
+    )
+    
+    print(f"[DEBUG] 정답 UUID 정렬: {[(uuid, uuid_to_number.get(uuid)) for uuid in correct_uuids]}")
     
     return {
         "correct_uuids": correct_uuids,
