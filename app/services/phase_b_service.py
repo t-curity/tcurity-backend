@@ -16,7 +16,8 @@ PHASE_B_TIME_LIMIT = 30
 def generate_phase_b_payload(
     fail_count: int,
     problem_data: Dict[str, Any],
-    fixed_numbers: List[int]
+    fixed_numbers: List[int],
+    difficulty: str = "NORMAL"
 ) -> Dict[str, Any]:
     """
     AI 서버에서 받은 문제 데이터를 FE용 payload로 변환
@@ -25,6 +26,7 @@ def generate_phase_b_payload(
         fail_count: 실패 횟수
         problem_data: AI 서버 응답
         fixed_numbers: 각 이미지에 할당할 숫자 리스트 [1, 2, 3, 4, 5, 6, 7, 8, 9]
+        difficulty: 난이도 ('NORMAL', 'MEDIUM', 'HIGH')
     
     Returns:
         FE용 payload (absolute answer 제외)
@@ -47,8 +49,8 @@ def generate_phase_b_payload(
         # 이 이미지에 할당된 숫자 (고정: 1~9)
         assigned_number = fixed_numbers[idx]
         
-        # 숫자 워터마크 적용
-        marked = apply_watermark_and_noise(img, assigned_number, fail_count)
+        # 숫자 워터마크 + 난이도별 노이즈 적용
+        marked = apply_watermark_and_noise(img, assigned_number, fail_count, difficulty)
         
         processed_grid.append({
             "image_id": img_info["image_id"],
@@ -95,7 +97,7 @@ def generate_phase_b_internal(
 
 
 
-def generate_phase_b_both(fail_count: int) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+def generate_phase_b_both(fail_count: int, difficulty: str = "NORMAL") -> Tuple[Dict[str, Any], Dict[str, Any]]:
     """
     Phase B 문제를 AI 서버에서 생성하고,
     - FE payload
@@ -104,6 +106,7 @@ def generate_phase_b_both(fail_count: int) -> Tuple[Dict[str, Any], Dict[str, An
     
     Args:
         fail_count: 현재 실패 횟수
+        difficulty: 난이도 ('NORMAL', 'MEDIUM', 'HIGH')
     
     Returns:
         (fe_payload, internal_payload)
@@ -115,11 +118,13 @@ def generate_phase_b_both(fail_count: int) -> Tuple[Dict[str, Any], Dict[str, An
     # 3x3 그리드: [1,2,3 / 4,5,6 / 7,8,9]
     fixed_numbers = list(range(1, 10))  # [1, 2, 3, 4, 5, 6, 7, 8, 9]
     
-    # 3) FE payload 생성
+    # 3) FE payload 생성 (난이도 적용)
+    print(f"[DEBUG] Phase B 문제 생성 - fail_count: {fail_count}, difficulty: {difficulty}")
     fe_payload = generate_phase_b_payload(
         fail_count=fail_count,
         problem_data=problem_data,
-        fixed_numbers=fixed_numbers
+        fixed_numbers=fixed_numbers,
+        difficulty=difficulty
     )
     
     # 4) Internal payload 생성

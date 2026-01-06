@@ -18,11 +18,73 @@ def to_base64(img):
     return base64.b64encode(buffer).decode('utf-8')
 
 
-def apply_watermark_and_noise(img, number, fail_count):
+def apply_adversarial_noise(img_np, difficulty: str, fail_count: int):
     """
-    Phase B 이미지에 숫자 워터마크 적용
-    - number: 이미지에 표시할 숫자 (1~9)
-    - fail_count: 실패 횟수 (현재 미사용, 추후 노이즈 추가 시 사용)
+    Adversarial-like Noise 적용
+    
+    Args:
+        img_np: numpy array (BGR)
+        difficulty: 'NORMAL', 'MEDIUM', 'HIGH'
+        fail_count: 실패 횟수 (추가 노이즈 강도에 영향)
+    
+    Returns:
+        노이즈가 적용된 numpy array (BGR)
+    
+    노이즈 종류:
+        - 가우시안 노이즈 (Gaussian Noise)
+        - 색상 왜곡 (Color Jitter)
+        - 밝기/대비 변화 (Brightness/Contrast)
+    """
+    if difficulty == "NORMAL":
+        return img_np  # 노이즈 없음
+    
+    # 난이도별 노이즈 강도 설정
+    if difficulty == "MEDIUM":
+        base_noise_level = 10  # 약한 노이즈
+        color_shift = 5
+        brightness_range = 0.1
+    else:  # HIGH
+        base_noise_level = 25  # 강한 노이즈
+        color_shift = 15
+        brightness_range = 0.2
+    
+    # 실패 횟수에 따라 노이즈 강도 추가 (최대 2배)
+    multiplier = 1.0 + (fail_count * 0.3)
+    multiplier = min(multiplier, 2.0)
+    
+    noise_level = int(base_noise_level * multiplier)
+    color_shift = int(color_shift * multiplier)
+    
+    img_float = img_np.astype(np.float32)
+    
+    # 1. 가우시안 노이즈 추가
+    noise = np.random.normal(0, noise_level, img_float.shape).astype(np.float32)
+    img_float = img_float + noise
+    
+    # 2. 색상 왜곡 (각 채널별 랜덤 shift)
+    for c in range(3):
+        shift = random.randint(-color_shift, color_shift)
+        img_float[:, :, c] = img_float[:, :, c] + shift
+    
+    # 3. 밝기/대비 변화
+    brightness = 1.0 + random.uniform(-brightness_range, brightness_range)
+    img_float = img_float * brightness
+    
+    # 클리핑 (0-255 범위로 제한)
+    img_float = np.clip(img_float, 0, 255)
+    
+    return img_float.astype(np.uint8)
+
+
+def apply_watermark_and_noise(img, number, fail_count, difficulty: str = "NORMAL"):
+    """
+    Phase B 이미지에 숫자 워터마크 + Adversarial-like Noise 적용
+    
+    Args:
+        img: PIL Image 또는 numpy array
+        number: 이미지에 표시할 숫자 (1~9)
+        fail_count: 실패 횟수 (노이즈 강도에 영향)
+        difficulty: 난이도 ('NORMAL', 'MEDIUM', 'HIGH')
     """
     from PIL import ImageDraw, ImageFont
     
@@ -81,6 +143,9 @@ def apply_watermark_and_noise(img, number, fail_count):
     # PIL Image → numpy array (cv2 형식)
     img_np = np.array(img)
     img_np = cv2.cvtColor(img_np, cv2.COLOR_RGB2BGR)
+    
+    # Adversarial-like Noise 적용
+    img_np = apply_adversarial_noise(img_np, difficulty, fail_count)
     
     return img_np
 

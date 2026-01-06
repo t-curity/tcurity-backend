@@ -9,6 +9,7 @@ class SessionStatus(str, Enum):
     PHASE_A = "PHASE_A"         # Phase A 문제 요청됨, 검증 대기/재시도 상태
     PHASE_B = "PHASE_B"         # Phase B 문제 요청됨, 검증 대기/재시도 상태
     COMPLETED = "COMPLETED"     # 모든 검증 완료 (최종 성공)
+    BLOCKED = "BLOCKED"         # 최대 실패 횟수 초과로 차단됨
     
 # --- 상태별 허용/차단 API 규칙 정의 (참고용) ---
 

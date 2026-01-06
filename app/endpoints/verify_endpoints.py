@@ -105,16 +105,50 @@ def captcha_submit(
     )
 
 from pydantic import BaseModel
+from time import time as current_time
 
 class CaptchaVerifyRequest(BaseModel):
     session_id: str
 
 @router.post("/verify", response_model=BaseResponse)
 def captcha_verify(req: CaptchaVerifyRequest):
+    """
+    S2S 최종 검증 API
+    - 외부 서버에서 세션 검증 시 사용
+    - COMPLETED 상태만 성공으로 처리
+    - BLOCKED 상태는 차단된 세션으로 처리
+    """
     session = get_session_and_validate(req.session_id)
     status = SessionStatus(session["status"])
+    
+    # BLOCKED 상태 처리
+    if status == SessionStatus.BLOCKED:
+        return BaseResponse(
+            status=status.value,
+            success=False,
+            error=ErrorInfo(
+                code=ErrorCode.MAX_ATTEMPTS_EXCEEDED,
+                message="차단된 세션입니다. 최대 실패 횟수를 초과했습니다."
+            ),
+            data={"session_id": req.session_id}
+        )
+    
+    # COMPLETED 상태만 성공
+    is_verified = (status == SessionStatus.COMPLETED)
+    
+    response_data = {
+        "session_id": req.session_id,
+        "verified": is_verified,
+        "status": status.value,
+    }
+    
+    # 검증 성공 시 추가 정보
+    if is_verified:
+        response_data["verified_at"] = int(current_time() * 1000)
+        response_data["phase_b_attempts"] = session.get("phase_b", {}).get("fail_count", 0)
+    
     return BaseResponse(
         status=status.value,
-        success=(status == SessionStatus.COMPLETED),
-        data={"session_id": req.session_id}
+        success=is_verified,
+        data=response_data
     )
