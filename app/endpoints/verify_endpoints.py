@@ -1,7 +1,7 @@
 # app/endpoints/verify_endpoints.py
 
 
-from fastapi import APIRouter, Header
+from fastapi import APIRouter, Header, HTTPException
 
 from app.schemas.captcha_submit import CaptchaSubmitRequest
 from app.schemas.common import BaseResponse, ErrorInfo
@@ -108,6 +108,10 @@ from pydantic import BaseModel
 from time import time as current_time
 from typing import Optional
 from app.services.client_validation import validate_client_secret_key
+from app.core.session_store import set_session_status
+import logging
+
+logger = logging.getLogger(__name__)
 
 class CaptchaVerifyRequest(BaseModel):
     session_id: str
@@ -118,52 +122,48 @@ def captcha_verify(
     client_secret_key: Optional[str] = Header(None, alias="X-Client-Secret-Key")
 ):
     """
-    S2S 최종 검증 API
+    S2S 최종 검증 API (Replay-Block 적용)
     - 고객사 BE에서 세션 검증 시 사용
     - X-Client-Secret-Key 헤더 필수
-    - COMPLETED 상태만 성공으로 처리
-    - BLOCKED 상태는 차단된 세션으로 처리
+    - COMPLETED 상태만 1회 검증 가능 → VERIFIED로 전이
+    - VERIFIED/BLOCKED 상태는 Replay 차단
     """
     # 1. 클라이언트 인증
     client = validate_client_secret_key(client_secret_key)
-    print(f"[S2S] 인증 성공 - client_id: {client.get('client_id')}")
+    logger.info(f"[S2S] 인증 성공 - client_id: {client.get('client_id')}")
     
     # 2. 세션 검증
     session = get_session_and_validate(req.session_id)
-    status = SessionStatus(session["status"])
+    current = SessionStatus(session["status"])
     
-    # BLOCKED 상태 처리
-    if status == SessionStatus.BLOCKED:
+    # 3. Replay-Block: VERIFIED 상태 (이미 검증됨)
+    if current == SessionStatus.VERIFIED:
+        logger.warning(f"[REPLAY] 이미 검증된 세션 재요청 - session_id: {req.session_id}")
+        raise HTTPException(status_code=403, detail="ALREADY_VERIFIED")
+    
+    # 4. Replay-Block: BLOCKED 상태 (차단된 세션)
+    if current == SessionStatus.BLOCKED:
+        logger.warning(f"[REPLAY] 차단된 세션 재요청 - session_id: {req.session_id}")
+        raise HTTPException(status_code=403, detail="SESSION_BLOCKED")
+    
+    # 5. COMPLETED 상태: 1회 검증 성공 → VERIFIED로 전이
+    if current == SessionStatus.COMPLETED:
+        # 상태 전이 (원자적)
+        set_session_status(req.session_id, SessionStatus.VERIFIED)
+        
+        logger.info(f"[S2S] 검증 성공 - session_id: {req.session_id}")
+        
         return BaseResponse(
-            status=status.value,
-            success=False,
-            error=ErrorInfo(
-                code=ErrorCode.MAX_ATTEMPTS_EXCEEDED,
-                message="차단된 세션입니다. 최대 실패 횟수를 초과했습니다."
-            ),
+            status=SessionStatus.VERIFIED.value,
+            success=True,
             data={
                 "session_id": req.session_id,
-                "redirect": True,
-                "redirect_to": "/"
+                "verified": True,
+                "verified_at": int(current_time() * 1000),
+                "phase_b_attempts": session.get("phase_b", {}).get("fail_count", 0)
             }
         )
     
-    # COMPLETED 상태만 성공
-    is_verified = (status == SessionStatus.COMPLETED)
-    
-    response_data = {
-        "session_id": req.session_id,
-        "verified": is_verified,
-        "status": status.value,
-    }
-    
-    # 검증 성공 시 추가 정보
-    if is_verified:
-        response_data["verified_at"] = int(current_time() * 1000)
-        response_data["phase_b_attempts"] = session.get("phase_b", {}).get("fail_count", 0)
-    
-    return BaseResponse(
-        status=status.value,
-        success=is_verified,
-        data=response_data
-    )
+    # 6. 그 외 상태 (INIT, PHASE_A, PHASE_B 등)
+    logger.warning(f"[S2S] 잘못된 상태에서 검증 요청 - session_id: {req.session_id}, status: {current.value}")
+    raise HTTPException(status_code=400, detail="INVALID_STATE")

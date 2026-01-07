@@ -24,3 +24,7 @@ class ErrorCode(str, Enum):
 
     # --- 서버 오류 ---
     INTERNAL_ERROR = "INTERNAL_ERROR"
+    
+    # --- BlindError (보안) ---
+    VERIFICATION_FAILED = "VERIFICATION_FAILED"  # 범용 에러 (공격자에게 상세 정보 숨김)
+

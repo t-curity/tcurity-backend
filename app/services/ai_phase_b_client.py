@@ -13,8 +13,7 @@ import urllib.error
 from typing import Dict, Any, List
 
 
-
-# AI 서버 URL (Phase A와 동일한 서버 사용)
+# AI 서버 URL
 AI_SERVER_URL = os.getenv("AI_SERVER_URL", "http://10.0.83.48:9000")
 
 

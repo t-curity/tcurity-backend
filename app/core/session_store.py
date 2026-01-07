@@ -5,14 +5,14 @@ from time import time
 from typing import Dict, Any
 
 from fastapi import HTTPException, status
-from app.core.state_machine import SessionStatus, STATE_TRANSITION_RULES # 1210 enum 도입 + 헬퍼 추가
+from app.core.state_machine import SessionStatus, STATE_TRANSITION_RULES
 
 
 # In-Memory Store
 SESSION_STORE: Dict[str, Dict[str, Any]] = {}
 
-# 설정 (TODO: config.py로 분리 가능)
-SESSION_TTL_SECONDS = 600   # 10분
+# 설정
+SESSION_TTL_SECONDS = 600  # 10분
 
 
 # -----------------------

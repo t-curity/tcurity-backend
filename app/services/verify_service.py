@@ -273,8 +273,15 @@ def verify_phase_b(
     # 리스트 직접 비교 (순서 + 값 모두 일치해야 통과)
     is_correct = user_answer == correct_uuids
     
+    # ========== 테스트용 콘솔 출력 ==========
+    print(f"\n{'='*50}")
+    print(f"[PHASE B 검증 결과]")
+    print(f"  - 사용자 답변: {user_answer}")
+    print(f"  - 정답: {correct_uuids}")
+    print(f"  - 결과: {'✅ 정답!' if is_correct else '❌ 오답'}")
+    print(f"{'='*50}\n")
+    
     if not is_correct:
-        print(f"[DEBUG] Phase B 순서 검증 실패 - user: {user_answer}, correct: {correct_uuids}")
         return handle_phase_b_fail(
             session_id,
             session,

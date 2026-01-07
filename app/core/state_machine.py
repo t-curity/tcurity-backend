@@ -8,7 +8,8 @@ class SessionStatus(str, Enum):
     INIT = "INIT"               # 세션 생성 직후
     PHASE_A = "PHASE_A"         # Phase A 문제 요청됨, 검증 대기/재시도 상태
     PHASE_B = "PHASE_B"         # Phase B 문제 요청됨, 검증 대기/재시도 상태
-    COMPLETED = "COMPLETED"     # 모든 검증 완료 (최종 성공)
+    COMPLETED = "COMPLETED"     # 모든 검증 완료 (S2S 검증 대기)
+    VERIFIED = "VERIFIED"       # S2S 검증 완료 (최종 상태, Replay 차단)
     BLOCKED = "BLOCKED"         # 최대 실패 횟수 초과로 차단됨
     
 # --- 상태별 허용/차단 API 규칙 정의 (참고용) ---
@@ -18,7 +19,8 @@ STATE_TRANSITION_RULES = {
     SessionStatus.INIT: [SessionStatus.PHASE_A],
     SessionStatus.PHASE_A: [SessionStatus.PHASE_A, SessionStatus.PHASE_B], # 재시도 또는 성공
     SessionStatus.PHASE_B: [SessionStatus.PHASE_B, SessionStatus.COMPLETED, SessionStatus.BLOCKED], # 재시도, 성공, 또는 차단
-    SessionStatus.COMPLETED: [SessionStatus.COMPLETED], # 최종 상태, 변경 불가
+    SessionStatus.COMPLETED: [SessionStatus.VERIFIED], # S2S 검증 시 VERIFIED로 전이
+    SessionStatus.VERIFIED: [SessionStatus.VERIFIED], # 최종 상태, 변경 불가
     SessionStatus.BLOCKED: [SessionStatus.BLOCKED], # 차단 상태, 변경 불가
 }
 
