@@ -150,9 +150,16 @@ def generate_phase_b_both(fail_count: int, difficulty: str = "NORMAL") -> Tuple[
         fixed_numbers=fixed_numbers
     )
     
-    # 디버깅 로그
-    # print(f"[PHASE B] CORRECT NUMBERS = {internal_payload['correct_numbers']}")
-    # print(f"[PHASE B] TARGET CLASS = {problem_data['target_class']}")
+    # ========== 테스트용 콘솔 출력 ==========
+    target_class = problem_data.get("target_class", "unknown")
+    correct_uuids = internal_payload["correct_uuids"]
+    print(f"\n{'='*50}")
+    print(f"[PHASE B 문제 정보]")
+    print(f"  - 타겟 클래스: {target_class}")
+    print(f"  - 정답 개수: {len(correct_uuids)}개")
+    print(f"  - 정답 순서: 숫자 작은 순으로 드래그")
+    print(f"  - 난이도: {difficulty}")
+    print(f"{'='*50}\n")
     
     return fe_payload, internal_payload
 
