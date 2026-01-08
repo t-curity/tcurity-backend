@@ -38,9 +38,9 @@ def calculate_difficulty_from_confidence(confidence: float) -> str:
         - 0.5 <= confidence < 0.8: 애매함 → MEDIUM (약한 노이즈)
         - confidence < 0.5: 봇에 가까움 → HIGH (강한 노이즈)
     """
-    if confidence >= 0.6:
+    if confidence >= 0.7:
         return "NORMAL"
-    elif confidence >= 0.4:
+    elif confidence >= 0.55:
         return "MEDIUM"
     else:
         return "HIGH"
