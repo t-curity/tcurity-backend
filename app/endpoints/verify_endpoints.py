@@ -1,7 +1,6 @@
 # app/endpoints/verify_endpoints.py
 
-
-from fastapi import APIRouter, Header, HTTPException
+from fastapi import APIRouter, Header, HTTPException, Request
 
 from app.schemas.captcha_submit import CaptchaSubmitRequest
 from app.schemas.common import BaseResponse, ErrorInfo
@@ -9,6 +8,7 @@ from app.schemas.error_codes import ErrorCode
 
 from app.core.session_store import get_session_and_validate
 from app.core.state_machine import SessionStatus
+from app.core.rate_limiter import limiter, key_by_session, key_by_client_secret, RATE_LIMITS
 
 from app.services.verify_service import verify_phase_a, verify_phase_b
 
@@ -16,8 +16,10 @@ router = APIRouter(tags=["CAPTCHA Submit"])
 
 
 @router.post("/submit", response_model=BaseResponse)
+@limiter.limit(RATE_LIMITS["submit"], key_func=key_by_session)
 def captcha_submit(
     request: CaptchaSubmitRequest,
+    req: Request,  # Rate limiter에 필요
     session_id: str = Header(..., alias="X-Session-Id")
 ):
 
@@ -117,8 +119,10 @@ class CaptchaVerifyRequest(BaseModel):
     session_id: str
 
 @router.post("/verify", response_model=BaseResponse)
+@limiter.limit(RATE_LIMITS["verify"], key_func=key_by_client_secret)
 def captcha_verify(
     req: CaptchaVerifyRequest,
+    request: Request,  # Rate limiter에 필요
     client_secret_key: Optional[str] = Header(None, alias="X-Client-Secret-Key")
 ):
     """
