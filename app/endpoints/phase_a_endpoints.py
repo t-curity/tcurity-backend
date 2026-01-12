@@ -1,12 +1,13 @@
 # app/endpoints/phase_a_endpoints.py
 
-from fastapi import APIRouter, Header
+from fastapi import APIRouter, Header, Request
 
 from app.schemas.common import BaseResponse, ErrorInfo
 from app.schemas.error_codes import ErrorCode
 
 from app.core.session_store import get_session_and_validate,update_session, set_session_status
 from app.core.state_machine import SessionStatus
+from app.core.rate_limiter import limiter, key_by_ip, RATE_LIMITS
 
 from app.services.phase_a_service import generate_phase_a_both
 from app.services.logging_service import log_event, LogLevel
@@ -15,7 +16,9 @@ router = APIRouter(tags=["CAPTCHA"])
 
 
 @router.post("/request", response_model=BaseResponse)
+@limiter.limit(RATE_LIMITS["request"], key_func=key_by_ip)
 def captcha_request_problem(
+    request: Request,  # Rate limiter에 필요
     session_id: str = Header(..., alias="X-Session-Id")
 ):
     """
