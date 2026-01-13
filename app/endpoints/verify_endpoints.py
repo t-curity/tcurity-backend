@@ -18,8 +18,8 @@ router = APIRouter(tags=["CAPTCHA Submit"])
 @router.post("/submit", response_model=BaseResponse)
 @limiter.limit(RATE_LIMITS["submit"], key_func=key_by_session)
 def captcha_submit(
-    req: Request,  # Rate limiter에 필요
-    request: CaptchaSubmitRequest,
+    request: Request,
+    body: CaptchaSubmitRequest, 
     session_id: str = Header(..., alias="X-Session-Id")
 ):
 
@@ -121,8 +121,8 @@ class CaptchaVerifyRequest(BaseModel):
 @router.post("/verify", response_model=BaseResponse)
 @limiter.limit(RATE_LIMITS["verify"], key_func=key_by_client_secret)
 def captcha_verify(
-    request: Request, # Rate limiter에 필요
-    req: CaptchaVerifyRequest,
+    request: Request,
+    body: CaptchaVerifyRequest,
     client_secret_key: Optional[str] = Header(None, alias="X-Client-Secret-Key")
 ):
     """
