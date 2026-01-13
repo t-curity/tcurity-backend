@@ -38,6 +38,6 @@ jobs:
         with:
           token: ${{ secrets.GHCR_TOKEN }}
           repository: t-curity/infra-deploy
-          event-type: deploy
+          event-type: deploy-backend
           client-payload: |
             {"service":"backend","tag":"sha-${{ github.sha }}"}
