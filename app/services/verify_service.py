@@ -19,7 +19,7 @@ from app.services.ai_phase_a_client import verify_phase_a_with_ai
 from app.services.ai_phase_b_client import verify_phase_b_with_ai
 
 
-PHASE_B_TIME_LIMIT = 30  # seconds
+PHASE_B_TIME_LIMIT = 33  # seconds (30초 + 3초 네트워크 버퍼)
 PHASE_B_MAX_FAIL_COUNT = 3  # 최대 실패 횟수
 
 

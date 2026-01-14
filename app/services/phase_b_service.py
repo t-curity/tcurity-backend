@@ -10,8 +10,6 @@ from PIL import Image
 from app.services.ai_phase_b_client import generate_phase_b_problem_from_ai
 from app.utils.image_tools import to_base64, apply_watermark_and_noise
 
-PHASE_B_TIME_LIMIT = 30
-
 
 def generate_phase_b_payload(
     fail_count: int,
