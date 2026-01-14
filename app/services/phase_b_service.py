@@ -59,7 +59,7 @@ def generate_phase_b_payload(
         "question": problem_data["question"],
         "grid": processed_grid,
         "phase": "2/2",  # FE 타입: "phase"
-        "time_limit": 300,  # 5분 (Phase A와 동일)
+        "time_limit": 30,  # 5분 (Phase A와 동일)
     }
 
 
