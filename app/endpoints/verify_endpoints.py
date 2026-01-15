@@ -161,7 +161,7 @@ def captcha_verify(
             status=SessionStatus.VERIFIED.value,
             success=True,
             data={
-                "session_id": body+++.session_id,
+                "session_id": body.session_id,
                 "verified": True,
                 "verified_at": int(current_time() * 1000),
                 "phase_b_attempts": session.get("phase_b", {}).get("fail_count", 0)
