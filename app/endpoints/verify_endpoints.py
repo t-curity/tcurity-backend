@@ -17,6 +17,7 @@ router = APIRouter(tags=["CAPTCHA Submit"])
 
 @router.post("/submit", response_model=BaseResponse)
 @limiter.limit(RATE_LIMITS["submit"], key_func=key_by_session)
+@limiter.limit(RATE_LIMITS["submit_burst"], key_func=key_by_session)
 def captcha_submit(
     request: Request,
     body: CaptchaSubmitRequest, 
