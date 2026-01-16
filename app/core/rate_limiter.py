@@ -57,7 +57,14 @@ limiter = Limiter(key_func=key_by_ip)
 # =====================================================
 
 RATE_LIMITS = {
-    "submit": "10/minute",      # /captcha/submit
-    "request": "20/minute",     # /captcha/request
-    "verify": "60/minute",      # /captcha/verify (S2S)
+    # /captcha/submit - 캡차 제출
+    "submit": "100/minute",         # 분당 제한 (넉넉하게)
+    "submit_burst": "3/5seconds",   # 5초당 3회 (burst 방지만)
+    
+    # /captcha/request - 문제 요청
+    "request": "100/minute",         # 분당 제한 (넉넉하게)
+    "request_burst": "3/5seconds",   # 5초당 3회 (burst 방지만)
+    
+    # /captcha/verify - S2S 검증 (고객사용)
+    "verify": "100/minute",          # 분당 100회
 }

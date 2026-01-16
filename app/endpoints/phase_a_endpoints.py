@@ -17,6 +17,7 @@ router = APIRouter(tags=["CAPTCHA"])
 
 @router.post("/request", response_model=BaseResponse)
 @limiter.limit(RATE_LIMITS["request"], key_func=key_by_ip)
+@limiter.limit(RATE_LIMITS["request_burst"], key_func=key_by_ip)
 def captcha_request_problem(
     request: Request,  # Rate limiter에 필요
     session_id: str = Header(..., alias="X-Session-Id")
