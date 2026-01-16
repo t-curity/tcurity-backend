@@ -300,8 +300,9 @@ def verify_phase_b(
         ai_result = verify_phase_b_with_ai(points, metadata)
         is_human = ai_result.get("pass", False)
     except Exception:
-        # AI 서버 오류 시 정답만 맞으면 통과 (AI 모델 준비 전)
-        is_human = True
+        # AI 서버 오류 시 봇으로 처리 (보안 강화)
+        is_human = False
+
 
 
     # 행동 검증 결과 처리
