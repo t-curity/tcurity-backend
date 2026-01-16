@@ -151,12 +151,12 @@ def verify_phase_b_with_ai_sync(
     
     print(f"[DEBUG] Phase B AI 호출 - 원본 포인트: {len(user_points)}개, 필터링 후: {len(filtered_points)}개")
     
-    # 유효 포인트가 너무 적으면 즉시 통과 처리
+    # 유효 포인트가 너무 적으면 봇으로 처리
     if len(filtered_points) < 2:  # Phase B는 클릭이므로 2개로 완화
-        print(f"[DEBUG] 포인트 부족으로 AI 서버 호출 스킵 (최소 2개 필요)")
+        print(f"[DEBUG] 포인트 부족으로 봇 처리 (최소 2개 필요)")
         return {
-            "pass": True,
-            "label": "사람",
+            "pass": False,
+            "label": "봇",
             "reason": "insufficient_valid_points"
         }
 
@@ -189,35 +189,35 @@ def verify_phase_b_with_ai_sync(
             return result
             
     except urllib.error.URLError as e:
-        # 연결 실패 시 통과 (AI 모델 준비 전)
+        # 연결 실패 시 봇으로 처리 (보안 강화)
         print(f"[DEBUG] AI 서버 연결 실패: {e}")
         return {
-            "pass": True,
-            "label": "사람",
+            "pass": False,
+            "label": "봇",
             "reason": "ai_server_connection_failed"
         }
     except urllib.error.HTTPError as e:
-        # HTTP 에러 시 통과
+        # HTTP 에러 시 봇으로 처리 (보안 강화)
         print(f"[DEBUG] AI 서버 HTTP 에러: {e.code}")
         return {
-            "pass": True,
-            "label": "사람",
+            "pass": False,
+            "label": "봇",
             "reason": f"ai_server_error_{e.code}"
         }
     except TimeoutError:
-        # 타임아웃 시 통과
+        # 타임아웃 시 봇으로 처리 (보안 강화)
         print(f"[DEBUG] AI 서버 타임아웃")
         return {
-            "pass": True,
-            "label": "사람",
+            "pass": False,
+            "label": "봇",
             "reason": "ai_server_timeout"
         }
     except Exception as e:
-        # 기타 에러 시 통과
+        # 기타 에러 시 봇으로 처리 (보안 강화)
         print(f"[DEBUG] AI 서버 알 수 없는 에러: {e}")
         return {
-            "pass": True,
-            "label": "사람",
+            "pass": False,
+            "label": "봇",
             "reason": "ai_server_unknown_error"
         }
 
