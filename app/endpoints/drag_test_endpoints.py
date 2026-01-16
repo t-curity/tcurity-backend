@@ -36,9 +36,7 @@ class DragTestLog(BaseModel):
     guide_line: Dict[str, Any]
     start_point: Optional[Dict[str, float]]
     end_point: Optional[Dict[str, float]]
-    result: str
-    fail_reason: Optional[str]
-    progress: float
+    progress: Optional[float] = None
     duration_ms: int
     point_count: int
     points: List[Dict[str, Any]]
