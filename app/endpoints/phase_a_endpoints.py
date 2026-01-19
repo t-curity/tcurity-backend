@@ -56,8 +56,13 @@ def captcha_request_problem(
             message="유효한 호출이 아닙니다."
         )
 
-    # Phase A 문제 생성 (FE + Internal)
-    fe_payload, internal_payload = generate_phase_a_both()
+    # User-Agent로 디바이스 타입 감지
+    user_agent = request.headers.get("User-Agent", "").lower()
+    is_mobile = any(keyword in user_agent for keyword in ["mobile", "android", "iphone", "ipad"])
+    device_type = "mobile" if is_mobile else "pc"
+    
+    # Phase A 문제 생성 (FE + Internal) - 디바이스별 가이드라인 적용
+    fe_payload, internal_payload = generate_phase_a_both(device_type=device_type)
 
     # 세션 업데이트 (정답 target_path 저장)
     # 자세한 에러 정보를 남겨도 됨.

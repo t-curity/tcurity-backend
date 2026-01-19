@@ -25,11 +25,14 @@ def generate_phase_a_internal() -> Dict[str, Any]:
     return internal_payload
 
 
-def generate_phase_a_both() -> Tuple[Dict[str, Any], Dict[str, Any]]:
+def generate_phase_a_both(device_type: str = "mobile") -> Tuple[Dict[str, Any], Dict[str, Any]]:
     """
     단일 문제 생성 함수.
     FE payload + Internal payload를 한 번에 생성하여 반환한다.
 
+    Args:
+        device_type: "pc" 또는 "mobile" (기본값: mobile)
+    
     반환:
         fe_payload: FE에게 내려보낼 UI/문제 데이터
         internal_payload: 서버에만 저장할 정답 경로/메타데이터
@@ -47,13 +50,21 @@ def generate_phase_a_both() -> Tuple[Dict[str, Any], Dict[str, Any]]:
     # 절취선 중앙 x 좌표 (백분율)
     center_x = (cut_rect[0] + cut_rect[2] / 2) / img_w
     
+    # 디바이스별 가이드라인 설정
+    # PC: 마우스 조작이 정밀하지 않을 수 있으므로 더 관대하게
+    # 모바일: 터치 조작은 상대적으로 정밀하므로 기본 설정 유지
+    if device_type == "pc":
+        y_margin_pixels = 150          # PC: 위아래 여유 더 넓게 (100 → 150)
+        GUIDE_LINE_MARGIN = 2.0        # PC: 너비 100% 더 넓게 (1.7 → 2.0)
+    else:
+        y_margin_pixels = 100          # 모바일: 기본 설정
+        GUIDE_LINE_MARGIN = 1.7        # 모바일: 기본 설정
+    
     # y 시작/끝 (백분율) - 위아래 여유 추가
-    y_margin_pixels = 100  # 위아래로 30픽셀씩 여유 (20 → 30)
     y_start = max(0, (cut_rect[1] - y_margin_pixels) / img_h)  # 위로 여유
     y_end = min(1, (cut_rect[1] + cut_rect[3] + y_margin_pixels) / img_h)  # 아래로 여유
     
     # 가이드라인 너비 (절취선보다 넓게 설정하여 여유 제공)
-    GUIDE_LINE_MARGIN = 1.7  # 70% 더 넓게 (1.5 → 1.7)
     line_width = (cut_rect[2] * GUIDE_LINE_MARGIN) / img_w
 
 
