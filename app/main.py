@@ -17,6 +17,9 @@
 from fastapi import FastAPI, Request
 from fastapi.exceptions import HTTPException
 from fastapi.responses import Response
+from contextlib import asynccontextmanager
+import asyncio
+
 from app.endpoints.session_endpoints import router as session_router
 from app.endpoints.phase_a_endpoints import router as phase_a_router
 from app.endpoints.verify_endpoints import router as verify_router
@@ -26,6 +29,7 @@ from app.core.logging_config import (
     setup_logging, generate_trace_id, set_trace_id, get_trace_id, mask_ip
 )
 from app.core.rate_limiter import limiter
+from app.core.session_store import cleanup_expired_sessions, get_session_stats
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 import logging
@@ -35,7 +39,52 @@ import time
 setup_logging(level="INFO")
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="T-CURITY Backend API", version="1.0.0")
+# GC 설정
+GC_INTERVAL_SECONDS = 60  # 60초마다 GC 실행
+
+
+# =====================================================
+# 백그라운드 태스크: 세션 GC
+# =====================================================
+async def session_gc_task():
+    """주기적으로 만료된 세션을 정리하는 백그라운드 태스크"""
+    while True:
+        await asyncio.sleep(GC_INTERVAL_SECONDS)
+        try:
+            deleted = cleanup_expired_sessions()
+            stats = get_session_stats()
+            logger.info(
+                f"Session GC completed",
+                extra={
+                    "event": "session_gc",
+                    "deleted": deleted,
+                    "active_sessions": stats["active"],
+                    "total_sessions": stats["total"],
+                }
+            )
+        except Exception as e:
+            logger.error(f"Session GC failed: {e}")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """FastAPI 앱 수명 주기 관리"""
+    # 시작 시: 백그라운드 태스크 생성
+    gc_task = asyncio.create_task(session_gc_task())
+    logger.info("Session GC task started (interval: 60s)")
+    
+    yield
+    
+    # 종료 시: 태스크 취소
+    gc_task.cancel()
+    try:
+        await gc_task
+    except asyncio.CancelledError:
+        pass
+    logger.info("Session GC task stopped")
+
+
+app = FastAPI(title="T-CURITY Backend API", version="1.0.0", lifespan=lifespan)
 
 
 # =====================================================

@@ -141,3 +141,54 @@ def update_session(session_id: str, data: Dict[str, Any]):
 # -----------------------
 def is_session_expired(session: Dict[str, Any]) -> bool:
     return int(time() * 1000) > session["expires_at"]
+
+
+# -----------------------
+# 세션 GC (Garbage Collection)
+# -----------------------
+def cleanup_expired_sessions() -> int:
+    """
+    만료된 세션을 SESSION_STORE에서 삭제.
+    백그라운드 태스크에서 주기적으로 호출됨.
+    
+    Returns:
+        삭제된 세션 수
+    """
+    now_ms = int(time() * 1000)
+    expired_ids = [
+        sid for sid, session in SESSION_STORE.items()
+        if now_ms > session["expires_at"]
+    ]
+    
+    for sid in expired_ids:
+        del SESSION_STORE[sid]
+    
+    if expired_ids:
+        print(f"[GC] 만료 세션 {len(expired_ids)}개 정리 완료")
+    
+    return len(expired_ids)
+
+
+def get_session_stats() -> Dict[str, Any]:
+    """
+    현재 세션 통계 조회 (모니터링/디버깅용)
+    
+    Returns:
+        {
+            "total": 전체 세션 수,
+            "active": 활성 세션 수,
+            "expired": 만료 세션 수 (아직 정리 안 된 것)
+        }
+    """
+    now_ms = int(time() * 1000)
+    total = len(SESSION_STORE)
+    expired = sum(
+        1 for session in SESSION_STORE.values()
+        if now_ms > session["expires_at"]
+    )
+    
+    return {
+        "total": total,
+        "active": total - expired,
+        "expired": expired
+    }
