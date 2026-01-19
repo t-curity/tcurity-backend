@@ -55,7 +55,7 @@ def generate_phase_a_both(device_type: str = "mobile") -> Tuple[Dict[str, Any], 
     # 모바일: 터치 조작은 상대적으로 정밀하므로 기본 설정 유지
     if device_type == "pc":
         y_margin_pixels = 200          # PC: 위아래 여유 더 넓게 (150 → 200)
-        GUIDE_LINE_MARGIN = 2.0        # PC: 너비 100% 더 넓게 (1.7 → 2.0)
+        GUIDE_LINE_MARGIN = 2.5        # PC: 너비 100% 더 넓게 (1.7 → 2.0)
     else:
         y_margin_pixels = 100          # 모바일: 기본 설정
         GUIDE_LINE_MARGIN = 1.7        # 모바일: 기본 설정
