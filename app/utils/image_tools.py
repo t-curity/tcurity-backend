@@ -1,8 +1,9 @@
-import cv2
 import numpy as np
 import random
 import json
 import base64
+from io import BytesIO
+from PIL import Image, ImageDraw, ImageFont
 
 
 # ==========================================================
@@ -10,25 +11,31 @@ import base64
 # ==========================================================
 def to_base64(img):
     """
-    numpy 이미지(BGR)를 base64 문자열로 변환
+    PIL Image 또는 numpy 이미지를 base64 문자열로 변환
     """
     if img is None:
         return ""
-    _, buffer = cv2.imencode('.png', img)
-    return base64.b64encode(buffer).decode('utf-8')
+    
+    # numpy array면 PIL Image로 변환
+    if isinstance(img, np.ndarray):
+        img = Image.fromarray(img)
+    
+    buffer = BytesIO()
+    img.save(buffer, format='PNG')
+    return base64.b64encode(buffer.getvalue()).decode('utf-8')
 
 
-def apply_adversarial_noise(img_np, difficulty: str, fail_count: int):
+def apply_adversarial_noise(img, difficulty: str, fail_count: int):
     """
     Adversarial-like Noise 적용
     
     Args:
-        img_np: numpy array (BGR)
+        img: PIL Image 또는 numpy array
         difficulty: 'NORMAL', 'MEDIUM', 'HIGH'
         fail_count: 실패 횟수 (추가 노이즈 강도에 영향)
     
     Returns:
-        노이즈가 적용된 numpy array (BGR)
+        노이즈가 적용된 PIL Image
     
     노이즈 종류:
         - 가우시안 노이즈 (Gaussian Noise)
@@ -36,7 +43,16 @@ def apply_adversarial_noise(img_np, difficulty: str, fail_count: int):
         - 밝기/대비 변화 (Brightness/Contrast)
     """
     if difficulty == "NORMAL":
-        return img_np  # 노이즈 없음
+        # PIL Image로 변환 후 반환
+        if isinstance(img, np.ndarray):
+            return Image.fromarray(img)
+        return img
+    
+    # PIL Image → numpy array
+    if not isinstance(img, np.ndarray):
+        img_np = np.array(img)
+    else:
+        img_np = img
     
     # 난이도별 노이즈 강도 설정
     if difficulty == "MEDIUM":
@@ -62,9 +78,12 @@ def apply_adversarial_noise(img_np, difficulty: str, fail_count: int):
     img_float = img_float + noise
     
     # 2. 색상 왜곡 (각 채널별 랜덤 shift)
-    for c in range(3):
+    for c in range(min(3, img_float.shape[2] if len(img_float.shape) > 2 else 1)):
         shift = random.randint(-color_shift, color_shift)
-        img_float[:, :, c] = img_float[:, :, c] + shift
+        if len(img_float.shape) > 2:
+            img_float[:, :, c] = img_float[:, :, c] + shift
+        else:
+            img_float = img_float + shift
     
     # 3. 밝기/대비 변화
     brightness = 1.0 + random.uniform(-brightness_range, brightness_range)
@@ -73,7 +92,7 @@ def apply_adversarial_noise(img_np, difficulty: str, fail_count: int):
     # 클리핑 (0-255 범위로 제한)
     img_float = np.clip(img_float, 0, 255)
     
-    return img_float.astype(np.uint8)
+    return Image.fromarray(img_float.astype(np.uint8))
 
 
 def apply_watermark_and_noise(img, number, fail_count, difficulty: str = "NORMAL"):
@@ -86,15 +105,9 @@ def apply_watermark_and_noise(img, number, fail_count, difficulty: str = "NORMAL
         fail_count: 실패 횟수 (노이즈 강도에 영향)
         difficulty: 난이도 ('NORMAL', 'MEDIUM', 'HIGH')
     """
-    from PIL import ImageDraw, ImageFont
-    
-    # PIL Image로 변환 (없으면 그대로)
-    if not hasattr(img, 'mode'):
-        # numpy array → PIL Image
-        if len(img.shape) == 3:
-            img = Image.fromarray(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
-        else:
-            img = Image.fromarray(img)
+    # PIL Image로 변환
+    if isinstance(img, np.ndarray):
+        img = Image.fromarray(img)
     
     # RGB로 변환 (RGBA, L 등 다양한 모드 처리)
     if img.mode != 'RGB':
@@ -140,14 +153,10 @@ def apply_watermark_and_noise(img, number, fail_count, difficulty: str = "NORMAL
         # 텍스트 (흰색)
         draw.text((x, y), text, fill=(255, 255, 255), font=font)
     
-    # PIL Image → numpy array (cv2 형식)
-    img_np = np.array(img)
-    img_np = cv2.cvtColor(img_np, cv2.COLOR_RGB2BGR)
-    
     # Adversarial-like Noise 적용
-    img_np = apply_adversarial_noise(img_np, difficulty, fail_count)
+    img = apply_adversarial_noise(img, difficulty, fail_count)
     
-    return img_np
+    return img
 
 
 # ==========================================================
@@ -161,8 +170,7 @@ def generate_phase_a_problem():
     
     canvas, metadata = generate_cutline(img_path)
     
-    _, buffer = cv2.imencode('.png', canvas)
-    image_base64 = base64.b64encode(buffer).decode('utf-8')
+    image_base64 = to_base64(canvas)
     
     curve_points = metadata["curve_points"]
     target_path = [
@@ -183,9 +191,8 @@ def generate_phase_a_problem():
     ]
     
     # 이미지 크기 (백분율 변환용)
-    img_h, img_w = canvas.shape[:2]
+    img_w, img_h = canvas.size
 
-    
     return {
         "image_base64": image_base64,
         "target_path": target_path,
@@ -193,6 +200,7 @@ def generate_phase_a_problem():
         "image_width": img_w,
         "image_height": img_h
     }
+
 
 # ==========================================================
 # 1) Bézier 곡선 생성 함수
@@ -213,7 +221,6 @@ def bezier_curve(P0, P1, P2, P3, num_points=250):
     return curve.astype(int)
 
 
-
 # ==========================================================
 # 2) 절취선 생성 (메모리 리턴 + 저장 없음)
 # ==========================================================
@@ -228,7 +235,7 @@ def generate_cutline(
 ):
     """
     절취선을 생성하고:
-    - result_img (numpy image)
+    - result_img (PIL Image)
     - metadata (dict)
     두 값을 메모리로만 반환함.
     파일 저장은 전혀 하지 않음.
@@ -237,21 +244,16 @@ def generate_cutline(
     # ------------------------
     # 이미지 로드
     # ------------------------
-    img = cv2.imread(img_path, cv2.IMREAD_UNCHANGED)  # BGRA 가능
-
-    if img is None:
-        raise FileNotFoundError(f"입력 이미지 없음: {img_path}")
-
-    # 혹시 3채널로 들어오면 알파를 붙여줌(안전장치)
-    if len(img.shape) == 3 and img.shape[2] == 3:
-        alpha = np.full((img.shape[0], img.shape[1], 1), 255, dtype=img.dtype)
-        img = np.concatenate([img, alpha], axis=2)  # BGR + A
+    img = Image.open(img_path)
+    
+    # RGBA로 변환 (알파 채널 보장)
+    if img.mode != 'RGBA':
+        img = img.convert('RGBA')
 
     canvas = img.copy()
+    draw = ImageDraw.Draw(canvas)
 
-    color = (255, 255, 255, 255)  # 흰색 + 불투명
-
-    h, w = img.shape[:2]
+    w, h = img.size
 
     # ------------------------
     # 티켓 y 범위
@@ -286,29 +288,24 @@ def generate_cutline(
     curve_points = bezier_curve(P0, P1, P2, P3)
 
     # ------------------------
-    # 점선 그리기 (결과는 메모리에서만 유지)
+    # 점선 그리기
     # ------------------------
-    canvas = img.copy()
     segment_length = int(dash_length * segment_ratio)
-    color = (255, 255, 255, 255) # 흰색 + 불투명
+    color = (255, 255, 255, 255)  # 흰색 + 불투명
 
     for i in range(0, len(curve_points), dash_length):
-
         if (i // dash_length) % 2 == 0:
-            start = tuple(curve_points[i])
+            start = curve_points[i]
             end_idx = min(i + segment_length, len(curve_points) - 1)
-            end = tuple(curve_points[end_idx])
+            end = curve_points[end_idx]
 
-            x1, y1 = start
-            x2, y2 = end
+            x1, y1 = int(start[0]), int(start[1])
+            x2, y2 = int(end[0]), int(end[1])
             half = thickness // 2
 
-            cv2.rectangle(
-                canvas,
-                (x1 - half, y1),
-                (x1 + half, y2),
-                color,
-                -1
+            draw.rectangle(
+                [x1 - half, y1, x1 + half, y2],
+                fill=color
             )
 
     # ------------------------
@@ -321,7 +318,6 @@ def generate_cutline(
     }
 
     return canvas, metadata
-
 
 
 # ==========================================================
@@ -337,9 +333,9 @@ if __name__ == "__main__":
     print("=== 절취선 생성 완료 ===")
     print("JSON 저장 완료: cutline_meta.json")
 
-    # 시각적 확인 (저장은 아님)
+    # 시각적 확인
     import matplotlib.pyplot as plt
-    plt.imshow(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+    plt.imshow(img)
     plt.title("Generated Cutline (Preview Only)")
     plt.axis("off")
     plt.show()
