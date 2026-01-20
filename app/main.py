@@ -24,7 +24,6 @@ from app.endpoints.session_endpoints import router as session_router
 from app.endpoints.phase_a_endpoints import router as phase_a_router
 from app.endpoints.verify_endpoints import router as verify_router
 from app.endpoints.health_endpoints import router as health_router
-from app.endpoints.drag_test_endpoints import router as drag_test_router
 from app.core.blind_error_handler import blind_error_handler
 from app.core.logging_config import (
     setup_logging, generate_trace_id, set_trace_id, get_trace_id, mask_ip
@@ -151,6 +150,3 @@ app.include_router(verify_router, prefix="/api/v1/captcha")
 
 # 헬스체크 (prefix 없음 - 루트에서 접근)
 app.include_router(health_router)
-
-# 드래그 테스트 (데이터 수집용)
-app.include_router(drag_test_router)
