@@ -7,7 +7,8 @@ COPY requirements.txt .
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
-    libgl1-mesa-glx \
+    libgl1-mesa-dev \
+    libxcb1 \
     libglib2.0-0 \
  && pip install --no-cache-dir -r requirements.txt \
  && apt-get purge -y build-essential \
