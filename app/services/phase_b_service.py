@@ -56,7 +56,7 @@ def generate_phase_b_payload(
         })
     
     return {
-        "question": problem_data["question"],
+        "display_class": problem_data["display_class"],
         "grid": processed_grid,
         "phase": "2/2",  # FE 타입: "phase"
         "time_limit": 30,  # 5분 (Phase A와 동일)
