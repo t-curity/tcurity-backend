@@ -57,8 +57,8 @@ def generate_phase_a_both(device_type: str = "mobile") -> Tuple[Dict[str, Any], 
         y_margin_pixels = 200          # PC: 위아래 여유 더 넓게 (150 → 200)
         GUIDE_LINE_MARGIN = 2.5        # PC: 너비 100% 더 넓게 (1.7 → 2.0)
     else:
-        y_margin_pixels = 100          # 모바일: 기본 설정
-        GUIDE_LINE_MARGIN = 1.7        # 모바일: 기본 설정
+        y_margin_pixels = 200          # 모바일: PC와 동일하게 설정
+        GUIDE_LINE_MARGIN = 2.5        # 모바일: PC와 동일하게 설정
     
     # y 시작/끝 (백분율) - 위아래 여유 추가
     y_start = max(0, (cut_rect[1] - y_margin_pixels) / img_h)  # 위로 여유
